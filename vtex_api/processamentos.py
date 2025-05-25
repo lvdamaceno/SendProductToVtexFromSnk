@@ -61,7 +61,7 @@ def vtex_atualiza_estoque(client):
                     if estoque_snk != estoque_vtex:
                         logging.info(f'🚨 Estoque do produto {refid} sku {edit_sku} precisa ser atualizado')
                         logging.info(f'🚨 Estoque Snk: {estoque_snk} | Estoque Vtex: {estoque_vtex}')
-                        vtex_send_update_estoque(refid, edit_sku, estoque_snk)
+                        vtex_send_update_estoque(refid, edit_sku, estoque_snk, estoque_vtex)
 
         except Exception as e:
             logging.error(f"❌ Falha ao processar id {id_sku}, sku {sku}: {e}")

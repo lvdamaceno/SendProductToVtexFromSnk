@@ -3,7 +3,7 @@ from notifications.telegram import enviar_notificacao_telegram
 from vtex_api.client import vtex_put
 
 
-def vtex_send_update_estoque(codprod, sku, estoque):
+def vtex_send_update_estoque(codprod, sku, estoque_snk, estoque_vtex):
     """
     Envia uma atualização de estoque para um SKU específico no depósito fixo '1f82610'.
 
@@ -12,15 +12,15 @@ def vtex_send_update_estoque(codprod, sku, estoque):
         estoque (int): Quantidade a ser atualizada.
     """
     endpoint = f"logistics/pvt/inventory/skus/{sku}/warehouses/1f82610"
-    payload = {"quantity": estoque}
-    mensagem = f"📦 Enviando atualização de estoque para o SKU {sku} → {estoque}"
+    payload = {"quantity": estoque_snk}
+    mensagem = f"📦 Enviando atualização de estoque para o SKU {sku} → {estoque_snk}"
 
     try:
         response = vtex_put(endpoint, data=payload, log_msg=mensagem)
 
         if response is not None:
-            logging.info(f"✅ Estoque atualizado com sucesso para Codprod {codprod} | SKU {sku}")
-            enviar_notificacao_telegram(f"✅ Estoque atualizado com sucesso para Codprod {codprod} | SKU {sku}")
+            logging.info(f"✅ Estoque atualizado com sucesso para Codprod {codprod} | SKU {sku} | Estoque Snk {estoque_snk} | Estoque Vtex: {estoque_vtex}")
+            enviar_notificacao_telegram(f"✅ Estoque atualizado com sucesso para Codprod {codprod} | SKU {sku} | Estoque Snk {estoque_snk} | Estoque Vtex: {estoque_vtex}")
         else:
             logging.warning(f"⚠️ Falha ao atualizar estoque para Codprod {codprod} | SKU {sku}")
             enviar_notificacao_telegram(f"⚠️ Falha ao atualizar estoque para Codprod {codprod} | SKU {sku}")
