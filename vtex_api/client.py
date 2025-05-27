@@ -1,8 +1,10 @@
 import logging
 import os
-
+import json
 import requests
 from dotenv import load_dotenv
+
+from notifications.telegram import enviar_notificacao_telegram
 
 load_dotenv()
 
@@ -34,20 +36,16 @@ def build_vtex_request(endpoint: str) -> tuple[str, dict]:
 
 
 def vtex_request(method: str, endpoint: str, data=None, log_msg=None):
-    """
-    Realiza requisições HTTP genéricas para a API VTEX com autenticação.
-
-    Args:
-        method (str): Método HTTP (GET, POST, PUT, etc).
-        endpoint (str): Caminho do endpoint da API.
-        data (dict, optional): Payload a ser enviado no corpo da requisição.
-        log_msg (str, optional): Mensagem de log.
-
-    Returns:
-        dict or None: Resposta em JSON ou None se falhar.
-    """
     url, headers = build_vtex_request(endpoint)
     try:
+        if log_msg:
+            logging.info(log_msg)
+
+        logging.debug(f"🔗 URL: {url}")
+        logging.debug(f"📨 Método: {method.upper()}")
+        logging.debug(f"📦 Payload: {json.dumps(data, indent=2)}")
+        logging.debug(f"🧾 Headers: {headers}")
+
         response = requests.request(
             method=method.upper(),
             url=url,
@@ -55,12 +53,16 @@ def vtex_request(method: str, endpoint: str, data=None, log_msg=None):
             json=data,
             timeout=30
         )
+        logging.debug(f"📥 Status Code: {response.status_code}")
+        logging.debug(f"📥 Response Text: {response.text}")
+
         response.raise_for_status()
-        if log_msg:
-            logging.info(log_msg)
         return response.json() if response.content else {}
+
     except requests.RequestException as e:
         logging.error(f"❌ Erro na requisição VTEX [{method.upper()} {endpoint}]: {e}")
+        enviar_notificacao_telegram(f"❌ Erro na requisição VTEX [{method.upper()} {endpoint}]: {e}")
+        logging.error(f"❌ Corpo da resposta com erro: {response.text if 'response' in locals() else 'sem resposta'}")
         return None
 
 

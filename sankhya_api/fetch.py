@@ -1,19 +1,15 @@
 import logging
-from typing import Optional, Dict
+import time
+from typing import Optional
 
-def sankhya_buscar_estoque(codprod: int, codemp: int, local:int, client) -> Optional[int]:
+import requests
+
+from notifications.telegram import enviar_notificacao_telegram
+
+
+def sankhya_fetch_estoque(codprod: int, codemp: int, local: int, client, tentativas: int = 3) -> Optional[int]:
     """
-    Consulta o estoque de um produto específico via API Sankhya.
-
-    - Se total de resultados for 0, retorna estoque = 0
-    - Se houver resultado, retorna o valor real de 'ESTOQUE' (campo f1)
-
-    Args:
-        codprod (int): Código do produto.
-        client (SankhyaClient): Instância autenticada da API.
-
-    Returns:
-        dict | None: {"CODPROD": ..., "ESTOQUE": ...} ou None em caso de erro.
+    Consulta o estoque de um produto no Sankhya com tentativas de retry em caso de falha.
     """
     payload = {
         "serviceName": "CRUDServiceProvider.loadRecords",
@@ -42,23 +38,97 @@ def sankhya_buscar_estoque(codprod: int, codemp: int, local:int, client) -> Opti
         }
     }
 
-    try:
-        response = client.post(payload)
-        body = response.get("responseBody", {}).get("entities", {})
+    for tentativa in range(1, tentativas + 1):
+        try:
+            response = client.post(payload)
+            body = response.get("responseBody", {}).get("entities", {})
 
-        total = int(body.get("total", "0"))
+            total = int(body.get("total", "0"))
+            if total == 0:
+                logging.info(f"📦 Produto {codprod} → Estoque: 0 no Sankhya")
+                return 0
 
-        if total == 0:
-            logging.info(f"📦 Produto {codprod} → Estoque: 0 no Sankhya")
-            return 0
+            entity = body.get("entity", {})
+            estoque = entity.get("f1", {}).get("$", "0")
 
-        entity = body.get("entity", {})
-        estoque = entity.get("f1", {}).get("$", "0")
+            estoque_formatado = int(float(estoque))
+            logging.info(f"📦 Estoque Sankhya: Codprod: {codprod} | Estoque: {estoque_formatado}")
+            return estoque_formatado
 
-        logging.info(f"📦 Estoque Sankhya: Codprod: {codprod} | Estoque: {estoque}")
-        estoque_formatado = int(float(estoque))
-        return estoque_formatado
+        except Exception as e:
+            logging.warning(f"⚠️ Tentativa {tentativa}/{tentativas} falhou ao consultar estoque do produto {codprod}: {e}")
 
-    except Exception as e:
-        logging.error(f"❌ Erro ao consultar estoque do produto {codprod}: {e}")
-        return None
+    logging.error(f"❌ Todas as tentativas falharam ao consultar estoque do produto {codprod}")
+    enviar_notificacao_telegram(f"❌ Todas as tentativas falharam ao consultar estoque do produto {codprod}")
+    return None
+
+
+def sankhya_fetch_preco_venda(codprod: int, client) -> Optional[str]:
+    payload = {
+        "serviceName": "ConsultaProdutosSP.consultaProdutos",
+        "requestBody": {
+            "filtros": {
+                "criterio": {
+                    "resourceID": "br.com.sankhya.com.cons.consultaProdutos",
+                    "PERCDESC": "0",
+                    "CODPROD": {
+                        "$": f"{codprod}"
+                    }
+                },
+                "isPromocao": {
+                    "$": "false"
+                },
+                "isLiquidacao": {
+                    "$": "false"
+                }
+            }
+        }
+    }
+
+    max_retries = 5
+    for attempt in range(1, max_retries + 1):
+        try:
+            response = client.post(payload)
+        except requests.exceptions.ReadTimeout:
+            logging.warning(f"⏳ Timeout na tentativa {attempt}/{max_retries} para CODPROD {codprod}")
+            continue
+        except Exception as e:
+            logging.error(f"❌ Erro inesperado na tentativa {attempt}/{max_retries} para CODPROD {codprod}: {e}")
+            enviar_notificacao_telegram(f"❌ Erro inesperado na tentativa {attempt}/{max_retries} para CODPROD {codprod}: {e}")
+            continue
+
+        if not isinstance(response, dict):
+            logging.error(f"🔴 Esperava JSON de dict, mas recebi: {response!r}")
+            enviar_notificacao_telegram(f"🔴 Esperava JSON de dict, mas recebi: {response!r}")
+            continue
+
+        resp_body = response.get("responseBody")
+        if not isinstance(resp_body, dict):
+            logging.error(f"🔴 Sem 'responseBody' válido: {resp_body!r}")
+            enviar_notificacao_telegram(f"🔴 Sem 'responseBody' válido: {resp_body!r}")
+            continue
+
+        produtos = resp_body.get("produtos")
+        if not isinstance(produtos, dict):
+            logging.error(f"🔴 Sem 'produtos' válido: {produtos!r}")
+            enviar_notificacao_telegram(logging.error(f"🔴 Sem 'produtos' válido: {produtos!r}"))
+            continue
+
+        produto = produtos.get("produto")
+        if not isinstance(produto, dict):
+            logging.error(f"🔴 Sem 'produto' válido: {produto!r}")
+            enviar_notificacao_telegram(f"🔴 Sem 'produto' válido: {produto!r}")
+            continue
+
+        preco_base = produto.get("PRECOBASE", {}).get("$")
+        if preco_base is None:
+            logging.error(f"⚠️ Campo 'PRECOBASE' ausente p/ CODPROD {codprod}")
+            enviar_notificacao_telegram(f"⚠️ Campo 'PRECOBASE' ausente p/ CODPROD {codprod}")
+            continue
+
+        logging.debug(f"💵 Preço Sankhya: {preco_base}")
+        return preco_base
+
+    logging.error(f"❌ Não consegui obter preço de venda para {codprod} após {max_retries} tentativas")
+    enviar_notificacao_telegram(f"❌ Não consegui obter preço de venda para {codprod} após {max_retries} tentativas")
+    return None
