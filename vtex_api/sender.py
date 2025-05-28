@@ -12,8 +12,8 @@ def vtex_send_update_estoque(codprod, sku, estoque_snk, estoque_vtex):
         response = vtex_put(endpoint, data=payload, log_msg=mensagem)
 
         if response is not None:
-            logging.info(f"✅ Estoque atualizado com sucesso para Codprod {codprod} | SKU {sku} | Estoque Snk {estoque_snk} | Estoque Vtex: {estoque_vtex}")
-            enviar_notificacao_telegram(f"✅ Estoque atualizado com sucesso para Codprod {codprod} | SKU {sku} | Estoque Snk {estoque_snk} | Estoque Vtex: {estoque_vtex}")
+            logging.info(f"✅ Estoque atualizado com sucesso para Codprod {codprod} | SKU {sku} | Estoque atualizado: {estoque_snk} | Estoque Anterior: {estoque_vtex}")
+            enviar_notificacao_telegram(f"✅ Estoque atualizado com sucesso para Codprod {codprod} | SKU {sku} | Estoque atualizado: {estoque_snk} | Estoque Anterior: {estoque_vtex}")
         else:
             logging.warning(f"⚠️ Falha ao atualizar estoque para Codprod {codprod} | SKU {sku}")
             enviar_notificacao_telegram(f"⚠️ Falha ao atualizar estoque para Codprod {codprod} | SKU {sku}")
@@ -44,9 +44,9 @@ def vtex_send_update_preco_venda(codprod, sku, preco_snk, preco_vtex):
 
         if response is not None:
             logging.info(
-                f"✅ Preço de venda atualizado com sucesso para Codprod {codprod} | SKU {sku} | Preço Snk {preco_float} | Preço Vtex: {preco_vtex}")
+                f"✅ Preço de venda atualizado com sucesso para Codprod {codprod} | SKU {sku} | Preço Atualizado: {preco_float} | Preço Anterior: {preco_vtex}")
             enviar_notificacao_telegram(
-                f"✅ Preço de venda atualizado com sucesso para Codprod {codprod} | SKU {sku} | Preço Snk {preco_float} | Preço Vtex: {preco_vtex}")
+                f"✅ Preço de venda atualizado com sucesso para Codprod {codprod} | SKU {sku} | Preço Atualizado {preco_float} | Preço Anterior: {preco_vtex}")
         else:
             logging.warning(f"⚠️ Falha ao atualizar preço para Codprod {codprod} | SKU {sku}")
             enviar_notificacao_telegram(f"⚠️ Falha ao atualizar preço para Codprod {codprod} | SKU {sku}")
