@@ -43,6 +43,7 @@ def vtex_merge_id_sku_dicts():
 
 
 def vtex_atualiza_estoque(client):
+    inicio = time.time()
     try:
         ids_skus = vtex_merge_id_sku_dicts()
     except Exception as e:
@@ -73,8 +74,14 @@ def vtex_atualiza_estoque(client):
             logging.error(f"❌ Falha ao processar estoque para id {id_sku}, sku {sku}: {e}")
             enviar_notificacao_telegram(f"❌ Falha ao processar estoque para id {id_sku}, sku {sku}: {e}")
 
+    fim = time.time()
+    duracao_min = (fim - inicio) / 60
+    enviar_notificacao_telegram(f"⏱️ Tempo total de execução p/ integração de estoque: {duracao_min:.2f} minutos")
+    logging.info(f"⏱️ Tempo total de execução: {duracao_min:.2f} minutos")
+
 
 def vtex_atualiza_preco_venda(client):
+    inicio = time.time()
     try:
         ids_skus = vtex_merge_id_sku_dicts()
     except Exception as e:
@@ -124,3 +131,8 @@ def vtex_atualiza_preco_venda(client):
         except Exception as e:
             logging.error(f"❌ Falha ao processar id {id_sku}, sku {sku}: {e}")
             enviar_notificacao_telegram(f"❌ Falha ao processar id {id_sku}, sku {sku}: {e}")
+
+    fim = time.time()
+    duracao_min = (fim - inicio) / 60
+    enviar_notificacao_telegram(f"⏱️ Tempo total de execução p/ integração de preço de venda: {duracao_min:.2f} minutos")
+    logging.info(f"⏱️ Tempo total de execução: {duracao_min:.2f} minutos")

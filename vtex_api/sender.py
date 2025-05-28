@@ -32,11 +32,7 @@ def vtex_send_update_preco_venda(codprod, sku, preco_snk, preco_vtex):
         logging.error(f"❌ Valor inválido para preco_snk: {preco_snk}")
         return
 
-    payload = {
-        "markup": 0,
-        "basePrice": preco_float
-    }
-
+    payload = {"markup": 0, "basePrice": preco_float}
     mensagem = f"📦 Enviando atualização de preço de venda para o SKU {sku} → {preco_float}"
 
     try:
