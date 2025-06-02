@@ -15,9 +15,6 @@ if __name__ == '__main__':
     enviar_notificacao_telegram(40*"=")
     enviar_notificacao_telegram("🚀 Iniciando integração de estoques/preços para o Vtex")
 
-    # logging.info("🚀 Iniciando envio de cadastro de produto o Vtex")
-    # vtex_atualiza_cadastro_produto(client)
-
     logging.info("🚀 Iniciando envio de estoques o Vtex")
     vtex_atualiza_estoque(client)
 

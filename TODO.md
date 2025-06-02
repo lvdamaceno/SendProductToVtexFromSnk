@@ -1,4 +1,4 @@
 # TODO
-- [ ] Cria integração de cadastro
+- [] Cria integração de cadastro de produto
 - [x] Cria integração de estoque
-- [ ] Cria integração de preço
+- [x] Cria integração de preço

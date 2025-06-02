@@ -53,7 +53,7 @@ def vtex_send_update_preco_venda(codprod, sku, preco_snk, preco_vtex):
         enviar_notificacao_telegram(f"❌ Erro ao atualizar preço do Codprod {codprod} | SKU {sku}: {e}")
 
 
-def vtex_send_grupo_informacoes(id_vtex, snk_codprod, client):
+def vtex_update_grupo_informacoes(id_vtex, snk_codprod, client):
     endpoint = f"catalog_system/pvt/products/{id_vtex}/specification"
 
     grupo_informacao = sankhya_fetch_grupo_informacoes_produto(snk_codprod, client)
