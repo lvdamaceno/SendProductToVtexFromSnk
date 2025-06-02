@@ -69,6 +69,9 @@ def vtex_request(method: str, endpoint: str, data=None, log_msg=None):
 def vtex_get(endpoint, log_msg=None):
     return vtex_request("GET", endpoint, log_msg=log_msg)
 
+def vtex_post(endpoint, data, log_msg=None):
+    return vtex_request("POST", endpoint, data=data, log_msg=log_msg)
+
 def vtex_put(endpoint, data, log_msg=None):
     return vtex_request("PUT", endpoint, data=data, log_msg=log_msg)
 

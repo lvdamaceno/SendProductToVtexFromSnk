@@ -1,6 +1,7 @@
+import json
 import logging
 import time
-from typing import Optional
+from typing import Optional, Any
 
 import requests
 
@@ -131,4 +132,48 @@ def sankhya_fetch_preco_venda(codprod: int, client) -> Optional[str]:
 
     logging.error(f"❌ Não consegui obter preço de venda para {codprod} após {max_retries} tentativas")
     enviar_notificacao_telegram(f"❌ Não consegui obter preço de venda para {codprod} após {max_retries} tentativas")
+    return None
+
+
+def sankhya_fetch_grupo_informacoes_produto(codprod: int, client, tentativas: int = 3) -> Optional[list[Any]]:
+    payload = {
+        "serviceName": "CRUDServiceProvider.loadRecords",
+        "requestBody": {
+            "dataSet": {
+                "rootEntity": "Produto",
+                "includePresentationFields": "N",
+                "offsetPage": "0",
+                "criteria": {
+                    "expression": {
+                        "$": f"this.CODPROD = {codprod}"
+                    }
+                },
+                "entity": {
+                    "fieldset": {
+                        "list": "AD_DESCLONGALV, AD_DESCTECNICALV, AD_URLIMGLV, AD_DIFERENCIAISLV, AD_URLDEMATERIAIS"
+                    }
+                }
+            }
+        }
+    }
+
+    for tentativa in range(1, tentativas + 1):
+        try:
+            response = client.post(payload)
+            body = response.get("responseBody", {}).get("entities", {}).get("entity", {})
+            logging.debug(f"📦 Payload: {json.dumps(body, indent=2)}")
+            f0 = body.get("f0", {}).get("$")
+            f1 = body.get("f1", {}).get("$")
+            f2 = body.get("f2", {}).get("$")
+            f3 = body.get("f3", {}).get("$")
+            f4 = body.get("f4", {}).get("$")
+            grupo_informacoes = [f0, f1, f2, f3, f4]
+            logging.debug(f"Grupo de informações: {grupo_informacoes}")
+            return grupo_informacoes
+
+        except Exception as e:
+            logging.warning(f"⚠️ Tentativa {tentativa}/{tentativas} falhou ao consultar grupo de informacoes do produto {codprod}: {e}")
+
+    logging.error(f"❌ Todas as tentativas falharam ao consultar grupo de informacoes do produto {codprod}")
+    enviar_notificacao_telegram(f"❌ Todas as tentativas falharam ao consultar grupo de informacoes do produto {codprod}")
     return None

@@ -5,7 +5,7 @@ from notifications.telegram import enviar_notificacao_telegram
 from sankhya_api.fetch import sankhya_fetch_estoque, sankhya_fetch_preco_venda
 from vtex_api.fetch import vtex_fetch_total_id_sku_list, vtex_fetch_id_sku_list, vtex_fetch_id_info, \
     vtex_fetch_estoque_sku, vtex_fetch_preco_venda_sku
-from vtex_api.sender import vtex_send_update_estoque, vtex_send_update_preco_venda
+from vtex_api.sender import vtex_send_update_estoque, vtex_send_update_preco_venda, vtex_send_grupo_informacoes
 from decimal import Decimal
 
 def vtex_merge_id_sku_dicts():
@@ -135,4 +135,21 @@ def vtex_atualiza_preco_venda(client):
     fim = time.time()
     duracao_min = (fim - inicio) / 60
     enviar_notificacao_telegram(f"⏱️ Tempo total de execução p/ integração de preço de venda: {duracao_min:.2f} minutos")
+    logging.info(f"⏱️ Tempo total de execução: {duracao_min:.2f} minutos")
+
+
+def vtex_atualiza_cadastro_produto(client):
+    inicio = time.time()
+
+    # Criar função para capturar a lista de id_vtex e snk_codprod
+
+    id_vtex = 0
+    snk_codprod = 0
+
+    vtex_send_grupo_informacoes(id_vtex, snk_codprod, client)
+
+    fim = time.time()
+    duracao_min = (fim - inicio) / 60
+    enviar_notificacao_telegram(
+        f"⏱️ Tempo total de execução p/ integração de cadastro de produto: {duracao_min:.2f} minutos")
     logging.info(f"⏱️ Tempo total de execução: {duracao_min:.2f} minutos")
