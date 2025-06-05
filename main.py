@@ -25,4 +25,3 @@ if __name__ == '__main__':
     fim = time.time()
     duracao_min = (fim - inicio) / 60
     logging.info(f"⏱️ Tempo total de execução: {duracao_min:.2f} minutos")
-    enviar_notificacao_telegram(f"⏱️ Tempo total de execução: {duracao_min:.2f} minutos")
