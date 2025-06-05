@@ -14,7 +14,6 @@ if __name__ == '__main__':
     inicio = time.time()
     client = SankhyaClient()
 
-    enviar_notificacao_telegram("=" * 40)
     enviar_notificacao_telegram("🚀 Iniciando integração de estoques/preços para o Vtex")
 
     logging.info("🚀 Iniciando envio de estoques para o Vtex")
