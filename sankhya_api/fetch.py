@@ -121,14 +121,23 @@ def sankhya_fetch_preco_venda(codprod: int, client) -> Optional[str]:
             enviar_notificacao_telegram(f"🔴 Sem 'produto' válido: {produto!r}")
             continue
 
-        preco_base = produto.get("PRECOBASE", {}).get("$")
-        if preco_base is None:
-            logging.error(f"⚠️ Campo 'PRECOBASE' ausente p/ CODPROD {codprod}")
-            enviar_notificacao_telegram(f"⚠️ Campo 'PRECOBASE' ausente p/ CODPROD {codprod}")
-            continue
+        promo = produto.get("ISPROMOCAO")
 
-        logging.debug(f"💵 Preço Sankhya: {preco_base}")
-        return preco_base
+        if promo == 'true':
+            preco = produto.get("Preço_PROMO_1", {}).get("$")
+            if preco is None:
+                logging.error(f"⚠️ Campo 'Preço_PROMO_1' ausente p/ CODPROD {codprod}")
+                enviar_notificacao_telegram(f"⚠️ Campo 'Preço_PROMO_1' ausente p/ CODPROD {codprod}")
+                continue
+        else:
+            preco = produto.get("PRECOBASE", {}).get("$")
+            if preco is None:
+                preco.error(f"⚠️ Campo 'PRECOBASE' ausente p/ CODPROD {codprod}")
+                enviar_notificacao_telegram(f"⚠️ Campo 'PRECOBASE' ausente p/ CODPROD {codprod}")
+                continue
+
+        logging.debug(f"💵 Preço Sankhya: {preco}")
+        return preco
 
     logging.error(f"❌ Não consegui obter preço de venda para {codprod} após {max_retries} tentativas")
     enviar_notificacao_telegram(f"❌ Não consegui obter preço de venda para {codprod} após {max_retries} tentativas")

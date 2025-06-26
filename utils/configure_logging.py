@@ -48,13 +48,14 @@ def configure_logging(project: str = "default"):
     file_handler.setFormatter(formatter)
 
     # Handler de PostgreSQL
-    pg_handler = PostgresLogHandler(project)
-    pg_handler.setFormatter(formatter)
+    # pg_handler = PostgresLogHandler(project)
+    # pg_handler.setFormatter(formatter)
 
     # Aplica todos os handlers
     logging.basicConfig(
         level=log_level,
-        handlers=[stream_handler, file_handler, pg_handler],
+        # handlers=[stream_handler, file_handler, pg_handler],
+        handlers=[stream_handler, file_handler],
         force=True
     )
 
