@@ -12,17 +12,13 @@ configure_logging(project="SendProductToVtexFromSnk")
 
 def main(client):
     inicio = time.time()
+    enviar_notificacao_telegram("🚀 Iniciando integração de estoques/preços para o Vtex")
 
     try:
         ids_skus = vtex_merge_id_sku_dicts()
-
-        enviar_notificacao_telegram("🚀 Iniciando integração de estoques/preços para o Vtex")
-
-        # logging.info("🚀 Iniciando envio de estoques para o Vtex")
-        # vtex_atualiza_estoque(ids_skus, client)
-
-        logging.info("🚀 Iniciando envio de preços de venda para o Vtex")
-        vtex_atualiza_preco_venda(ids_skus, client)
+        for id_sku, sku in ids_skus.items():
+            # vtex_atualiza_estoque(ids_skus, client)
+            vtex_atualiza_preco_venda(id_sku, sku, client)
 
     except Exception as e:
         logging.error(f"❌ Erro ao obter dicionário id_sku: {e}")
