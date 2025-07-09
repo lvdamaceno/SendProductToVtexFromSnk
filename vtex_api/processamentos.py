@@ -43,14 +43,8 @@ def vtex_merge_id_sku_dicts():
     return id_sku_dict
 
 
-def vtex_atualiza_estoque(client):
+def vtex_atualiza_estoque(ids_skus, client):
     inicio = time.time()
-    try:
-        ids_skus = vtex_merge_id_sku_dicts()
-    except Exception as e:
-        logging.error(f"❌ Erro ao obter dicionário id_sku: {e}")
-        enviar_notificacao_telegram(f"❌ Erro ao obter dicionário id_sku: {e}")
-        raise SystemExit(1)
 
     for id_sku, sku in ids_skus.items():
         try:
@@ -80,14 +74,8 @@ def vtex_atualiza_estoque(client):
     logging.info(f"⏱️ Tempo total de execução: {duracao_min:.2f} minutos")
 
 
-def vtex_atualiza_preco_venda(client):
+def vtex_atualiza_preco_venda(ids_skus, client):
     inicio = time.time()
-    try:
-        ids_skus = vtex_merge_id_sku_dicts()
-    except Exception as e:
-        logging.error(f"❌ Erro ao obter dicionário id_sku: {e}")
-        enviar_notificacao_telegram(f"❌ Erro ao obter dicionário id_sku: {e}")
-        raise SystemExit(1)
 
     for id_sku, sku in ids_skus.items():
         try:
