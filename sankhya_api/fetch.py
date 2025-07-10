@@ -64,7 +64,7 @@ def sankhya_fetch_estoque(codprod: int, codemp: int, local: int, client, tentati
     return None
 
 
-def sankhya_fetch_preco_venda(codprod: int, client) -> Optional[str]:
+def sankhya_fetch_preco_venda(codprod: int, client) -> Optional[tuple[Optional[Any], Optional[Any]]]:
     payload = {
         "serviceName": "ConsultaProdutosSP.consultaProdutos",
         "requestBody": {
@@ -75,12 +75,6 @@ def sankhya_fetch_preco_venda(codprod: int, client) -> Optional[str]:
                     "CODPROD": {
                         "$": f"{codprod}"
                     }
-                },
-                "isPromocao": {
-                    "$": "false"
-                },
-                "isLiquidacao": {
-                    "$": "false"
                 }
             }
         }
@@ -121,23 +115,12 @@ def sankhya_fetch_preco_venda(codprod: int, client) -> Optional[str]:
             enviar_notificacao_telegram(f"🔴 Sem 'produto' válido: {produto!r}")
             continue
 
-        promo = produto.get("ISPROMOCAO")
+        preco = produto.get("PRECOBASE", {}).get("$")
+        preco_promo = produto.get("Preço_PROMO_1", {}).get("$")
 
-        if promo == 'true':
-            preco = produto.get("Preço_PROMO_1", {}).get("$")
-            if preco is None:
-                logging.error(f"⚠️ Campo 'Preço_PROMO_1' ausente p/ CODPROD {codprod}")
-                enviar_notificacao_telegram(f"⚠️ Campo 'Preço_PROMO_1' ausente p/ CODPROD {codprod}")
-                continue
-        else:
-            preco = produto.get("PRECOBASE", {}).get("$")
-            if preco is None:
-                preco.error(f"⚠️ Campo 'PRECOBASE' ausente p/ CODPROD {codprod}")
-                enviar_notificacao_telegram(f"⚠️ Campo 'PRECOBASE' ausente p/ CODPROD {codprod}")
-                continue
+        logging.info(f"Preço {preco}, Promo {preco_promo}")
 
-        logging.debug(f"💵 Preço Sankhya: {preco}")
-        return preco
+        return preco, preco_promo
 
     logging.error(f"❌ Não consegui obter preço de venda para {codprod} após {max_retries} tentativas")
     enviar_notificacao_telegram(f"❌ Não consegui obter preço de venda para {codprod} após {max_retries} tentativas")

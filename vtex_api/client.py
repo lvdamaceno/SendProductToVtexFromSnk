@@ -75,3 +75,6 @@ def vtex_post(endpoint, data, log_msg=None):
 def vtex_put(endpoint, data, log_msg=None):
     return vtex_request("PUT", endpoint, data=data, log_msg=log_msg)
 
+def vtex_delete(endpoint, log_msg=None):
+    return vtex_request("DELETE", endpoint, log_msg=log_msg)
+

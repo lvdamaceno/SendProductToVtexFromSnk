@@ -4,7 +4,7 @@ from dotenv import load_dotenv
 from notifications.telegram import enviar_notificacao_telegram
 from sankhya_api.auth import SankhyaClient
 from vtex_api.processamentos import vtex_atualiza_estoque, vtex_atualiza_preco_venda, vtex_merge_id_sku_dicts
-from utils.configure_logging import configure_logging  # ✅ correto para pacote
+from utils.configure_logging import configure_logging
 
 # Carrega .env e configura logging com o nome do projeto
 load_dotenv()
@@ -17,9 +17,8 @@ def main(client):
     try:
         ids_skus = vtex_merge_id_sku_dicts()
         for id_sku, sku in ids_skus.items():
-            # vtex_atualiza_estoque(ids_skus, client)
+            vtex_atualiza_estoque(id_sku, sku, client)
             vtex_atualiza_preco_venda(id_sku, sku, client)
-
     except Exception as e:
         logging.error(f"❌ Erro ao obter dicionário id_sku: {e}")
         enviar_notificacao_telegram(f"❌ Erro ao obter dicionário id_sku: {e}")
@@ -32,3 +31,6 @@ def main(client):
 
 if __name__ == '__main__':
     main(client = SankhyaClient())
+
+    # client = SankhyaClient()
+    # vtex_atualiza_preco_venda(19, 27, client)
