@@ -33,4 +33,4 @@ if __name__ == '__main__':
     main(client = SankhyaClient())
 
     # client = SankhyaClient()
-    # vtex_atualiza_preco_venda(19, 27, client)
+    # vtex_atualiza_preco_venda(112, 119, client)

@@ -118,7 +118,7 @@ def vtex_atualiza_preco_venda(id_sku, sku, client):
         logging.info(f"Preço promo {preco_promo}")
         if float(preco_promo) > 0:
             logging.info('💵 Produto possui desconto, criando preço fixo no vtex')
-            vtex_create_fixed_price(edit_sku, preco_promo)
+            vtex_create_fixed_price(edit_sku, preco, preco_promo)
         else:
             logging.info('💵 Produto não possui desconto')
 

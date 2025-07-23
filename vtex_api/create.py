@@ -37,7 +37,7 @@ def delete_fixed_prices(edit_sku: int):
         except Exception as e:
             logging.error(f"❌ Falha ao deletar preço fixo : {e}")
 
-def vtex_create_fixed_price(edit_sku: int, preco_promo: float):
+def vtex_create_fixed_price(edit_sku: int, preco: float, preco_promo: float):
     """
     Remove preços fixos existentes e cria um novo preço fixo para o SKU
     no intervalo de hoje até amanhã.
@@ -49,7 +49,7 @@ def vtex_create_fixed_price(edit_sku: int, preco_promo: float):
     payload = [
         {
             "value": float(preco_promo),
-            "listPrice": float(preco_promo),
+            "listPrice": float(preco),
             "minQuantity": 1,
             "dateRange": {
                 "from": agora_iso8601(),
