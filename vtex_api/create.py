@@ -61,7 +61,6 @@ def vtex_create_fixed_price(edit_sku: int, preco: float, preco_promo: float):
     ]
     logging.info(f"💵 Criando novo preço fixo: {json.dumps(payload, ensure_ascii=False)}")
     try:
-        # Observação: o endpoint de criação/edit não precisa de um ID fixo no path
         endpoint = f"pricing/prices/{edit_sku}/fixed/1"
         vtex_post(endpoint, payload, f"🔢 Criando preço fixo para SKU {edit_sku}")
         logging.info(f"✅ Novo preço fixo criado com sucesso para o SKU {edit_sku}.")
