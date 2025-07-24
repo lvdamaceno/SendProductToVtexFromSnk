@@ -60,7 +60,6 @@ def vtex_create_fixed_price(edit_sku: int, preco: float, preco_promo: float):
         }
     ]
     logging.info(f"💵 Criando novo preço fixo: {json.dumps(payload, ensure_ascii=False)}")
-    enviar_notificacao_telegram(f"💵 Criando novo preço fixo para o sku {edit_sku}")
     try:
         # Observação: o endpoint de criação/edit não precisa de um ID fixo no path
         endpoint = f"pricing/prices/{edit_sku}/fixed/1"
