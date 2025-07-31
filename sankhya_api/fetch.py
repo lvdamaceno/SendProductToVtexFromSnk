@@ -65,6 +65,7 @@ def sankhya_fetch_estoque(codprod: int, codemp: int, local: int, client, tentati
 
 
 def sankhya_fetch_preco_venda(codprod: int, client) -> Optional[tuple[Optional[Any], Optional[Any]]]:
+    logging.info(f"🟢 Buscando dados de preço de venda no Sankhya para o produto {codprod}")
     payload = {
         "serviceName": "ConsultaProdutosSP.consultaProdutos",
         "requestBody": {

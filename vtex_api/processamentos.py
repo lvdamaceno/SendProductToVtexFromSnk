@@ -74,13 +74,13 @@ def vtex_atualiza_estoque(id_sku, sku, client):
 
 
 def vtex_atualiza_preco_venda(id_sku, sku, client):
+
     inicio = time.time()
     try:
         edit_sku = sku[0] if isinstance(sku, list) and sku else sku
-
-        delete_fixed_prices(edit_sku)
-        print(40*'-')
         logging.info(f"🟢 Buscando dados de preço de venda do id {id_sku} - sku {edit_sku}")
+
+        # delete_fixed_prices(edit_sku)
 
         # 1) Busca no VTEX para obter o refid
         refid = vtex_fetch_id_info(id_sku)
@@ -129,15 +129,4 @@ def vtex_atualiza_preco_venda(id_sku, sku, client):
 
     fim = time.time()
     duracao_min = (fim - inicio) / 60
-    logging.info(f"⏱️ Tempo total de execução: {duracao_min:.2f} minutos")
-
-
-def vtex_atualiza_cadastro_produto(id_vtex, snk_codprod, client):
-    inicio = time.time()
-
-    vtex_update_grupo_informacoes(id_vtex, snk_codprod, client)
-
-    fim = time.time()
-    duracao_min = (fim - inicio) / 60
-
     logging.info(f"⏱️ Tempo total de execução: {duracao_min:.2f} minutos")

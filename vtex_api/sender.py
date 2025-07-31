@@ -25,6 +25,7 @@ def vtex_send_update_estoque(codprod, sku, estoque_snk, estoque_vtex):
 
 
 def vtex_send_update_preco_venda(codprod, sku, preco_snk, preco_vtex):
+    logging.info(f"🟢 Enviando para p Vtex atualização de preço de venda {codprod}")
     logging.debug(f"🔢 Codprod {codprod} | SKU {sku} | preco snk {preco_snk} | preco vtex {preco_vtex}")
     endpoint = f"pricing/prices/{sku}"
     try:

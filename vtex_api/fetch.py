@@ -77,6 +77,7 @@ def vtex_fetch_id_info(id_sku):
 
     Retorna o RefId (código de referência), ou None em caso de erro.
     """
+    logging.info(f"🟢 Buscando id info no vtex para o id {id_sku}")
     endpoint = f"catalog/pvt/product/{id_sku}"
 
     try:
@@ -141,6 +142,7 @@ def vtex_fetch_estoque_sku(id_sku):
 
 
 def vtex_fetch_preco_venda_sku(id_sku) -> Optional[str]:
+    logging.info(f"🟢 Buscando preço de venda no Vtex para o id {id_sku}")
     endpoint = f"pricing/prices/{id_sku}"
 
     try:
@@ -153,7 +155,7 @@ def vtex_fetch_preco_venda_sku(id_sku) -> Optional[str]:
     except Exception as e:
         logging.error(f"❌ Erro ao consultar preço de venda do SKU {id_sku}: {e}")
         enviar_notificacao_telegram(f"❌ Erro ao consultar preço de venda do SKU {id_sku}: {e}")
-        return None
+        return str(0)
 
 
 def vtex_fetch_descricao_antiga_produto():

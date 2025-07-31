@@ -18,10 +18,13 @@ def get_fixed_prices(id_sku: int) -> list:
     Retorna a lista de preços fixos existentes para o SKU,
     ou lista vazia caso não haja nenhum.
     """
+    logging.info(f"🟢 Buscando preços fixos para o id {id_sku}")
     try:
         endpoint = f"pricing/prices/{id_sku}/fixed"
         # GET retorna uma lista de objetos, cada um com campo "id"
-        return vtex_get(endpoint, "🔢 Buscando preços fixos existentes") or []
+        response = vtex_get(endpoint, "🔢 Buscando preços fixos existentes") or []
+        logging.info(f"Response get_fixed_prices: {response}")
+        return response
     except Exception as e:
         logging.error(f"❌ Erro ao buscar preços fixos do SKU {id_sku}: {e}")
         return []
@@ -30,7 +33,9 @@ def delete_fixed_prices(edit_sku: int):
     """
     Deleta todos os preços fixos encontrados para o SKU.
     """
+    logging.info(f"🟢 Tentando deletar preços fixos exidstentes para o sku {edit_sku}")
     fixed_prices = get_fixed_prices(edit_sku)
+
     if fixed_prices:
         endpoint = f"pricing/prices/{edit_sku}/fixed/1"
         try:
@@ -38,12 +43,16 @@ def delete_fixed_prices(edit_sku: int):
             logging.info(f"✅ Preço fixo deletado com sucesso.")
         except Exception as e:
             logging.error(f"❌ Falha ao deletar preço fixo : {e}")
+    else:
+        pass
 
 def vtex_create_fixed_price(edit_sku: int, preco: float, preco_promo: float):
     """
     Remove preços fixos existentes e cria um novo preço fixo para o SKU
     no intervalo de hoje até amanhã.
     """
+    logging.info(f"🟢 Criando preço promocional para o sku {edit_sku}")
+
     # 1) Excluir tudo que já existe
     delete_fixed_prices(edit_sku)
 

@@ -30,7 +30,8 @@ def main(client):
 
 
 if __name__ == '__main__':
-    main(client = SankhyaClient())
+    # main(client = SankhyaClient())
 
-    # client = SankhyaClient()
-    # vtex_atualiza_preco_venda(112, 119, client)
+    client = SankhyaClient()
+    vtex_atualiza_preco_venda(542, 548, client)
+
