@@ -44,7 +44,7 @@ def vtex_request(method: str, endpoint: str, data=None, log_msg=None):
         logging.info(f"🔗 URL: {url}")
         logging.info(f"📨 Método: {method.upper()}")
         logging.info(f"📦 Payload: {json.dumps(data, indent=2)}")
-        logging.info(f"🧾 Headers: {headers}")
+        logging.debug(f"🧾 Headers: {headers}")
 
         response = requests.request(
             method=method.upper(),
