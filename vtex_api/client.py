@@ -61,9 +61,9 @@ def vtex_request(method: str, endpoint: str, data=None, log_msg=None):
 
     except requests.RequestException as e:
         logging.error(f"❌ Erro na requisição VTEX [{method.upper()} {endpoint}]: {e}")
-        enviar_notificacao_telegram(f"❌ Erro na requisição VTEX [{method.upper()} {endpoint}]: {e}")
         logging.error(f"❌ Corpo da resposta com erro: {response.text if 'response' in locals() else 'sem resposta'}")
-        return None
+        # enviar_notificacao_telegram(f"❌ Erro na requisição VTEX [{method.upper()} {endpoint}]: {e}")
+        # return None
 
 
 def vtex_get(endpoint, log_msg=None):

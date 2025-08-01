@@ -1,5 +1,6 @@
 import logging
 from typing import Optional
+from requests.exceptions import HTTPError
 
 from notifications.telegram import enviar_notificacao_telegram
 from vtex_api.client import vtex_get
@@ -154,12 +155,6 @@ def vtex_fetch_preco_venda_sku(id_sku) -> Optional[str]:
 
     except Exception as e:
         logging.error(f"❌ Erro ao consultar preço de venda do SKU {id_sku}: {e}")
-        enviar_notificacao_telegram(f"❌ Erro ao consultar preço de venda do SKU {id_sku}: {e}")
+        # enviar_notificacao_telegram(f"❌ Erro ao consultar preço de venda do SKU {id_sku}: {e}")
         return str(0)
 
-
-def vtex_fetch_descricao_antiga_produto():
-    # 1. Capturar lista de produtos que tenha o Grupo de Informações -> Descrição vazio
-    # 2. Usar os id para capturar Informações básicas -> Descrição
-    # 3. Usar a descrição para criar os novos Grupos de Informação capturados no item 1
-    pass
