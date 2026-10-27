@@ -1,9 +1,11 @@
+from datetime import datetime, timedelta, timezone
 from unittest import mock
 
 import pytest
 import requests
 
 import vtex_api.client as client
+import vtex_api.create as create
 import vtex_api.fetch as fetch
 import vtex_api.processamentos as proc
 
@@ -127,3 +129,72 @@ def test_preco_igual_com_promo_cria_preco_fixo(sem_preco_fixo):
         assert proc.vtex_atualiza_preco_venda(1, [10], None, "123") == (proc.OK, None)
     envia.assert_not_called()
     sem_preco_fixo.assert_called_once_with(10, "1.0", "0.80")
+
+
+def test_produto_ausente_no_sankhya_e_sem_preco(sem_preco_fixo):
+    with mock.patch.object(proc, "sankhya_fetch_preco_venda", return_value=(None, None)), \
+            mock.patch.object(proc, "vtex_fetch_preco_venda_sku") as preco_vtex:
+        status, detalhe = proc.vtex_atualiza_preco_venda(1, [10], None, "410819")
+    assert status == proc.SEM_PRECO
+    assert "410819" in detalhe
+    preco_vtex.assert_not_called()
+
+
+def test_falha_no_preco_promocional_e_falha(sem_preco_fixo):
+    sem_preco_fixo.return_value = False
+    with mock.patch.object(proc, "sankhya_fetch_preco_venda", return_value=("1.0", "0.80")), \
+            mock.patch.object(proc, "vtex_fetch_preco_venda_sku", return_value="1"):
+        status, detalhe = proc.vtex_atualiza_preco_venda(1, [10], None, "123")
+    assert status == proc.FALHA
+    assert "promocional" in detalhe
+
+
+# --- vtex_create_fixed_price --------------------------------------------------
+
+def _preco_fixo(value=0.8, list_price=1, horas=20):
+    vence = datetime.now(timezone.utc) + timedelta(hours=horas)
+    return [{"tradePolicyId": "1", "value": value, "listPrice": list_price, "minQuantity": 1,
+             "dateRange": {"from": "2026-10-27T19:30:04Z", "to": vence.strftime("%Y-%m-%dT%H:%M:%SZ")}}]
+
+
+@pytest.fixture
+def vtex_preco_fixo():
+    with mock.patch.object(create, "vtex_get") as get, \
+            mock.patch.object(create, "vtex_delete", return_value={}) as delete, \
+            mock.patch.object(create, "vtex_post", return_value={}) as post:
+        yield mock.Mock(get=get, delete=delete, post=post)
+
+
+def test_preco_fixo_vigente_nao_e_recriado(vtex_preco_fixo):
+    vtex_preco_fixo.get.return_value = _preco_fixo()
+    assert create.vtex_create_fixed_price(10, "1.0", "0.80") is True
+    vtex_preco_fixo.delete.assert_not_called()
+    vtex_preco_fixo.post.assert_not_called()
+
+
+@pytest.mark.parametrize("existente", [_preco_fixo(value=0.7), _preco_fixo(horas=6)])
+def test_preco_fixo_diferente_ou_vencendo_e_recriado(vtex_preco_fixo, existente):
+    vtex_preco_fixo.get.return_value = existente
+    assert create.vtex_create_fixed_price(10, "1.0", "0.80") is True
+    vtex_preco_fixo.delete.assert_called_once()
+    vtex_preco_fixo.post.assert_called_once()
+
+
+def test_sem_preco_fixo_cria_sem_deletar(vtex_preco_fixo):
+    vtex_preco_fixo.get.return_value = {}  # 404
+    assert create.vtex_create_fixed_price(10, "1.0", "0.80") is True
+    vtex_preco_fixo.delete.assert_not_called()
+    vtex_preco_fixo.post.assert_called_once()
+
+
+def test_falha_ao_deletar_nao_cria(vtex_preco_fixo):
+    vtex_preco_fixo.get.return_value = _preco_fixo(value=0.7)
+    vtex_preco_fixo.delete.return_value = None
+    assert create.vtex_create_fixed_price(10, "1.0", "0.80") is False
+    vtex_preco_fixo.post.assert_not_called()
+
+
+def test_falha_ao_criar_retorna_false(vtex_preco_fixo):
+    vtex_preco_fixo.get.return_value = []
+    vtex_preco_fixo.post.return_value = None
+    assert create.vtex_create_fixed_price(10, "1.0", "0.80") is False

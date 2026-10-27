@@ -47,14 +47,14 @@ def sankhya_fetch_estoque(codprod: int, codemp: int, local: int, client, tentati
 
             total = int(body.get("total", "0"))
             if total == 0:
-                logging.info(f"📦 Produto {codprod} → Estoque: 0 no Sankhya")
+                logging.debug(f"📦 Produto {codprod} → Estoque: 0 no Sankhya")
                 return 0
 
             entity = body.get("entity", {})
             estoque = entity.get("f1", {}).get("$", "0")
 
             estoque_formatado = int(float(estoque))
-            logging.info(f"📦 Estoque Sankhya: Codprod: {codprod} | Estoque: {estoque_formatado}")
+            logging.debug(f"📦 Estoque Sankhya: Codprod: {codprod} | Estoque: {estoque_formatado}")
             return estoque_formatado
 
         except Exception as e:
@@ -88,7 +88,7 @@ def sankhya_fetch_estoques(codemp: int, local: int, client) -> Optional[dict[int
 
 
 def sankhya_fetch_preco_venda(codprod: int, client) -> Optional[tuple[Optional[Any], Optional[Any]]]:
-    logging.info(f"🟢 Buscando dados de preço de venda no Sankhya para o produto {codprod}")
+    logging.debug(f"🟢 Buscando dados de preço de venda no Sankhya para o produto {codprod}")
     payload = {
         "serviceName": "ConsultaProdutosSP.consultaProdutos",
         "requestBody": {
@@ -134,6 +134,12 @@ def sankhya_fetch_preco_venda(codprod: int, client) -> Optional[tuple[Optional[A
             continue
 
         produto = produtos.get("produto")
+        if isinstance(produto, list) and produto:
+            produto = produto[0]
+        if produto is None:
+            # resposta válida sem o produto: repetir a consulta dá o mesmo resultado
+            logging.warning(f"⚠️ Produto {codprod} não retornado pela consulta de preço do Sankhya")
+            return None, None
         if not isinstance(produto, dict):
             logging.error(f"🔴 Sem 'produto' válido: {produto!r}")
             continue
@@ -141,7 +147,7 @@ def sankhya_fetch_preco_venda(codprod: int, client) -> Optional[tuple[Optional[A
         preco = produto.get("PRECOBASE", {}).get("$")
         preco_promo = produto.get("Preço_PROMO_1", {}).get("$")
 
-        logging.info(f"Preço {preco}, Promo {preco_promo}")
+        logging.debug(f"Preço {preco}, Promo {preco_promo}")
 
         return preco, preco_promo
 

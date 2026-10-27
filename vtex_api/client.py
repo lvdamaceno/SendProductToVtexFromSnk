@@ -41,7 +41,7 @@ def vtex_request(method: str, endpoint: str, data=None, log_msg=None, ok_404=Fal
         if log_msg:
             logging.info(log_msg)
 
-        logging.info(f"🔗 {method.upper()} {url}")
+        logging.debug(f"🔗 {method.upper()} {url}")
         logging.debug(f"📦 Payload: {json.dumps(data, indent=2)}")
 
         response = requests.request(
@@ -51,7 +51,7 @@ def vtex_request(method: str, endpoint: str, data=None, log_msg=None, ok_404=Fal
             json=data,
             timeout=30
         )
-        logging.info(f"📥 Status Code: {response.status_code}")
+        logging.debug(f"📥 Status Code: {response.status_code}")
         logging.debug(f"📥 Response Text: {response.text}")
 
         # Para consultas em que "não existe" é uma resposta válida (ex.: SKU ainda sem preço)

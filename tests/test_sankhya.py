@@ -84,3 +84,10 @@ def test_preco_venda_nao_repete_quando_post_desiste():
     client.post.return_value = None
     assert fetch.sankhya_fetch_preco_venda(417643, client) is None
     assert client.post.call_count == 1
+
+
+def test_preco_venda_produto_nao_retornado_nao_repete():
+    client = mock.Mock()
+    client.post.return_value = {"responseBody": {"produtos": {"produto": None}}}
+    assert fetch.sankhya_fetch_preco_venda(410819, client) == (None, None)
+    assert client.post.call_count == 1

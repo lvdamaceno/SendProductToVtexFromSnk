@@ -47,6 +47,7 @@ OK = "ok"
 ATUALIZADO = "atualizado"
 SEM_SKU = "sem_sku"
 SEM_REFID = "sem_refid"
+SEM_PRECO = "sem_preco"
 FALHA = "falha"
 
 # Empresa e local do Sankhya cujo estoque é publicado no depósito "Estoque" da VTEX
@@ -54,7 +55,7 @@ CODEMP_ESTOQUE = 7
 CODLOCAL_ESTOQUE = 188
 
 
-def _normaliza_sku(id_sku, sku):
+def normaliza_sku(id_sku, sku):
     """Retorna o primeiro SKU da lista, ou None se o produto não tiver SKU."""
     edit_sku = sku[0] if isinstance(sku, list) and sku else sku
     if edit_sku is None or edit_sku == []:
@@ -72,13 +73,13 @@ def vtex_atualiza_estoque(id_sku, sku, client, refid=None, estoques_snk=None):
     Returns:
         tuple: (status, detalhe) — detalhe descreve a alteração ou a falha, ou None.
     """
-    edit_sku = _normaliza_sku(id_sku, sku)
+    edit_sku = normaliza_sku(id_sku, sku)
     if edit_sku is None:
         return SEM_SKU, None
 
     inicio = time.time()
     try:
-        logging.info(f"🟢 Buscando dados de estoque do id {id_sku} - sku {edit_sku}")
+        logging.debug(f"🟢 Buscando dados de estoque do id {id_sku} - sku {edit_sku}")
 
         if refid is None:
             refid = vtex_fetch_id_info(id_sku)
@@ -112,9 +113,7 @@ def vtex_atualiza_estoque(id_sku, sku, client, refid=None, estoques_snk=None):
         return FALHA, f"erro no estoque do id {id_sku}: {e}"
 
     finally:
-        fim = time.time()
-        duracao_min = (fim - inicio) / 60
-        logging.info(f"⏱️ Tempo total de execução: {duracao_min:.2f} minutos")
+        logging.debug(f"⏱️ Estoque do id {id_sku} processado em {time.time() - inicio:.1f}s")
 
 
 def vtex_atualiza_preco_venda(id_sku, sku, client, refid=None):
@@ -124,13 +123,13 @@ def vtex_atualiza_preco_venda(id_sku, sku, client, refid=None):
     Returns:
         tuple: (status, detalhe) — detalhe descreve a alteração ou a falha, ou None.
     """
-    edit_sku = _normaliza_sku(id_sku, sku)
+    edit_sku = normaliza_sku(id_sku, sku)
     if edit_sku is None:
         return SEM_SKU, None
 
     inicio = time.time()
     try:
-        logging.info(f"🟢 Buscando dados de preço de venda do id {id_sku} - sku {edit_sku}")
+        logging.debug(f"🟢 Buscando dados de preço de venda do id {id_sku} - sku {edit_sku}")
 
         # delete_fixed_prices(edit_sku)
 
@@ -149,15 +148,15 @@ def vtex_atualiza_preco_venda(id_sku, sku, client, refid=None):
 
         preco, preco_promo = resultado_snk
         if preco is None:
-            logging.error(f"⚠️ Preço Sankhya ausente para produto {refid}")
-            return FALHA, f"preço Sankhya ausente para Codprod {refid}"
+            # produto não retornado pela consulta de preço do Sankhya: não é falha da integração
+            return SEM_PRECO, f"Codprod {refid} (SKU {edit_sku})"
 
         # 3) Busca no VTEX o preço do SKU
         preco_vtex = vtex_fetch_preco_venda_sku(edit_sku)
         if preco_vtex is None:
             return FALHA, f"preço VTEX indisponível para Codprod {refid} (SKU {edit_sku})"
 
-        logging.info(f"💵 Preço de venda codprod {refid} Sku {edit_sku} Sankhya: {preco} | Vtex: {preco_vtex}")
+        logging.debug(f"💵 Preço de venda codprod {refid} Sku {edit_sku} Sankhya: {preco} | Vtex: {preco_vtex}")
 
         # Normalização
         norm_preco_snk = preco.strip().replace(',', '.')
@@ -178,14 +177,16 @@ def vtex_atualiza_preco_venda(id_sku, sku, client, refid=None):
             else:
                 status, detalhe = FALHA, f"falha ao enviar preço do Codprod {refid} (SKU {edit_sku})"
         else:
-            logging.info(f"✅ Preços iguais: {dec_preco_sankhya}")
+            logging.debug(f"✅ Preços iguais: {dec_preco_sankhya}")
 
-        logging.info(f"Preço promo {preco_promo}")
+        logging.debug(f"Preço promo {preco_promo}")
         if preco_promo and float(preco_promo) > 0:
-            logging.info('💵 Produto possui desconto, criando preço fixo no vtex')
-            vtex_create_fixed_price(edit_sku, preco, preco_promo)
+            logging.debug('💵 Produto possui desconto, garantindo preço fixo no vtex')
+            if not vtex_create_fixed_price(edit_sku, preco, preco_promo):
+                falha_promo = f"falha ao criar preço promocional do Codprod {refid} (SKU {edit_sku})"
+                return FALHA, f"{detalhe}; {falha_promo}" if detalhe else falha_promo
         else:
-            logging.info('💵 Produto não possui desconto')
+            logging.debug('💵 Produto não possui desconto')
 
         return status, detalhe
 
@@ -194,6 +195,4 @@ def vtex_atualiza_preco_venda(id_sku, sku, client, refid=None):
         return FALHA, f"erro no preço do id {id_sku}: {e}"
 
     finally:
-        fim = time.time()
-        duracao_min = (fim - inicio) / 60
-        logging.info(f"⏱️ Tempo total de execução: {duracao_min:.2f} minutos")
+        logging.debug(f"⏱️ Preço do id {id_sku} processado em {time.time() - inicio:.1f}s")

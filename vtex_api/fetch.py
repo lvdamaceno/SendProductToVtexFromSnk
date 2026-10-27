@@ -78,7 +78,7 @@ def vtex_fetch_id_info(id_sku):
 
     Retorna o RefId (código de referência), ou None em caso de erro.
     """
-    logging.info(f"🟢 Buscando id info no vtex para o id {id_sku}")
+    logging.debug(f"🟢 Buscando id info no vtex para o id {id_sku}")
     endpoint = f"catalog/pvt/product/{id_sku}"
 
     try:
@@ -91,9 +91,9 @@ def vtex_fetch_id_info(id_sku):
         nome = result.get("Name")
 
         if ref_id and nome:
-            logging.info(f"📄 Produto: {ref_id} - {nome}")
+            logging.debug(f"📄 Produto: {ref_id} - {nome}")
         elif ref_id:
-            logging.info(f"📄 Produto: {ref_id}")
+            logging.debug(f"📄 Produto: {ref_id}")
         else:
             logging.warning(f"⚠️ Produto sem RefId para SKU {id_sku}")
 
@@ -126,7 +126,7 @@ def vtex_fetch_estoque_sku(id_sku):
 
         if estoque:
             log_str = ", ".join(f"{k} = {v}" for k, v in sorted(estoque.items()))
-            logging.info(f"📦 Estoque VTEX: SKU {id_sku}: {log_str}")
+            logging.debug(f"📦 Estoque VTEX: SKU {id_sku}: {log_str}")
         else:
             logging.warning(f"⚠️ SKU {id_sku} com dados de estoque vazios.")
 
@@ -143,7 +143,7 @@ def vtex_fetch_preco_venda_sku(id_sku) -> Optional[str]:
     "0" quando o SKU ainda não tem preço cadastrado (404), para que o preço seja criado;
     None quando a consulta falhou, para que o SKU seja ignorado nesta execução.
     """
-    logging.info(f"🟢 Buscando preço de venda no Vtex para o id {id_sku}")
+    logging.debug(f"🟢 Buscando preço de venda no Vtex para o id {id_sku}")
     endpoint = f"pricing/prices/{id_sku}"
 
     result = vtex_get(endpoint, ok_404=True)

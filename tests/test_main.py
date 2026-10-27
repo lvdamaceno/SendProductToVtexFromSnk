@@ -3,7 +3,7 @@ from unittest import mock
 import pytest
 
 import main
-from vtex_api.processamentos import ATUALIZADO, FALHA, OK, SEM_SKU
+from vtex_api.processamentos import ATUALIZADO, FALHA, OK, SEM_PRECO, SEM_SKU
 
 
 @pytest.fixture
@@ -58,15 +58,48 @@ def test_estoque_em_lote_e_repassado(integracao):
     integracao.estoque.assert_called_once_with(1, [1], None, "ref1", {111: 3})
 
 
-def test_produto_sem_sku_nao_busca_refid(integracao):
+def test_produto_sem_sku_nao_busca_refid(integracao, caplog):
     integracao.ids.return_value = {1: []}
-    integracao.estoque.return_value = (SEM_SKU, None)
-    integracao.preco.return_value = (SEM_SKU, None)
 
     main.main(None)
 
     integracao.id_info.assert_not_called()
-    assert "Sem SKU: 1" in _resumo(integracao)
+    integracao.estoque.assert_not_called()
+    integracao.preco.assert_not_called()
+    assert "Sem SKU: 1" in caplog.text
+    assert caplog.text.count("sem SKU na VTEX") == 1
+
+
+def test_sem_alteracoes_nao_envia_telegram(integracao):
+    integracao.ids.return_value = {1: [1]}
+    integracao.estoque.return_value = (OK, None)
+    integracao.preco.return_value = (OK, None)
+
+    main.main(None)
+
+    integracao.telegram.assert_not_called()
+
+
+def test_sem_preco_no_sankhya_nao_conta_como_falha(integracao):
+    integracao.ids.return_value = {1: [1], 2: [2]}
+    integracao.estoque.return_value = (OK, None)
+    integracao.preco.side_effect = lambda id_sku, *a: (SEM_PRECO, "Codprod 410819 (SKU 1)") if id_sku == 1 else (OK, None)
+
+    main.main(None)  # 1/2 sem preço: seria 50% de falha, mas não sai com erro
+
+    integracao.telegram.assert_not_called()
+
+
+def test_contexto_do_produto_no_log(integracao):
+    integracao.ids.return_value = {656: [656]}
+    vistos = []
+    integracao.estoque.side_effect = lambda *a: (vistos.append(main.contexto_log.get()), (OK, None))[1]
+    integracao.preco.return_value = (OK, None)
+
+    main.main(None)
+
+    assert vistos == ["[id 656] "]
+    assert main.contexto_log.get() == ""
 
 
 def test_excecao_inesperada_conta_como_falha(integracao):

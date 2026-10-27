@@ -9,8 +9,9 @@ from sankhya_api.auth import SankhyaClient
 from sankhya_api.fetch import sankhya_fetch_estoques
 from vtex_api.fetch import vtex_fetch_id_info
 from vtex_api.processamentos import (vtex_atualiza_estoque, vtex_atualiza_preco_venda, vtex_merge_id_sku_dicts,
-                                     ATUALIZADO, FALHA, SEM_SKU, SEM_REFID, CODEMP_ESTOQUE, CODLOCAL_ESTOQUE)
-from utils.configure_logging import configure_logging
+                                     normaliza_sku, ATUALIZADO, FALHA, SEM_SKU, SEM_REFID, SEM_PRECO,
+                                     CODEMP_ESTOQUE, CODLOCAL_ESTOQUE)
+from utils.configure_logging import configure_logging, contexto_log
 
 # Carrega .env e configura logging com o nome do projeto
 load_dotenv()
@@ -35,32 +36,40 @@ def _secao(titulo, itens):
     return linhas
 
 
-def _monta_resumo(total, contagem, atualizados, falhas, duracao_min):
+def _monta_resumo(total, contagem, atualizados, falhas, sem_preco, duracao_min):
     linhas = [
         f"📊 Integração Sankhya → VTEX concluída em {duracao_min:.1f} min",
         f"Produtos: {total}",
         f"Estoque: {contagem['estoque', ATUALIZADO]} atualizados, {contagem['estoque', FALHA]} falhas",
         f"Preço: {contagem['preco', ATUALIZADO]} atualizados, {contagem['preco', FALHA]} falhas",
-        f"Sem SKU: {contagem['estoque', SEM_SKU]} | Sem RefId: {contagem['estoque', SEM_REFID]}",
+        f"Sem SKU: {contagem['estoque', SEM_SKU]} | Sem RefId: {contagem['estoque', SEM_REFID]}"
+        f" | Sem preço no Sankhya: {contagem['preco', SEM_PRECO]}",
     ]
     linhas += _secao("✅ Atualizados", atualizados)
     linhas += _secao("❌ Falhas", falhas)
+    linhas += _secao("⚠️ Sem preço no Sankhya", sem_preco)
     return "\n".join(linhas)
 
 
 def _processa_produto(id_sku, sku, client, estoques_snk):
     """Sincroniza estoque e preço de um produto. Retorna [(tipo, status, detalhe), ...]."""
-    # RefId buscado uma vez e reaproveitado em estoque e preço
-    refid = vtex_fetch_id_info(id_sku) if sku else None
-    return [
-        ("estoque", *vtex_atualiza_estoque(id_sku, sku, client, refid, estoques_snk)),
-        ("preco", *vtex_atualiza_preco_venda(id_sku, sku, client, refid)),
-    ]
+    token = contexto_log.set(f"[id {id_sku}] ")
+    try:
+        if normaliza_sku(id_sku, sku) is None:
+            return [("estoque", SEM_SKU, None), ("preco", SEM_SKU, None)]
+        # RefId buscado uma vez e reaproveitado em estoque e preço
+        refid = vtex_fetch_id_info(id_sku)
+        return [
+            ("estoque", *vtex_atualiza_estoque(id_sku, sku, client, refid, estoques_snk)),
+            ("preco", *vtex_atualiza_preco_venda(id_sku, sku, client, refid)),
+        ]
+    finally:
+        contexto_log.reset(token)
 
 
 def main(client):
     inicio = time.time()
-    enviar_notificacao_telegram("🚀 Iniciando integração de estoques/preços para o Vtex")
+    logging.info("🚀 Iniciando integração de estoques/preços para o Vtex")
 
     try:
         ids_skus = vtex_merge_id_sku_dicts()
@@ -75,7 +84,7 @@ def main(client):
         logging.warning("⚠️ Estoque em lote indisponível, consultando o Sankhya produto a produto")
 
     contagem = Counter()
-    atualizados, falhas = [], []
+    atualizados, falhas, sem_preco = [], [], []
     produtos_com_falha = 0
 
     with ThreadPoolExecutor(max_workers=SYNC_WORKERS) as pool:
@@ -100,14 +109,18 @@ def main(client):
                 elif status == FALHA:
                     falhas.append(detalhe)
                     teve_falha = True
+                elif status == SEM_PRECO:
+                    sem_preco.append(detalhe)
             produtos_com_falha += teve_falha
 
     duracao_min = (time.time() - inicio) / 60
     logging.info(f"⏱️ Tempo total de execução: {duracao_min:.2f} minutos")
 
-    resumo = _monta_resumo(len(ids_skus), contagem, atualizados, falhas, duracao_min)
+    resumo = _monta_resumo(len(ids_skus), contagem, atualizados, falhas, sem_preco, duracao_min)
     logging.info(resumo)
-    enviar_notificacao_telegram(resumo)
+    # Run sem alterações nem falhas não gera mensagem; falha do cron já é alertada pelo Render
+    if atualizados or falhas:
+        enviar_notificacao_telegram(resumo)
 
     if ids_skus and produtos_com_falha / len(ids_skus) > LIMITE_FALHAS:
         logging.error(f"❌ {produtos_com_falha}/{len(ids_skus)} produtos com falha, acima do limite de {LIMITE_FALHAS:.0%}")

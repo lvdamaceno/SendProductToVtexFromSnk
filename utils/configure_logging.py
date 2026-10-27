@@ -1,7 +1,17 @@
+import contextvars
 import logging
 import os
 from datetime import datetime
 from logging.handlers import RotatingFileHandler
+
+# Prefixo das linhas de log (ex.: "[id 656] "); cada thread do sync define o do produto que está processando
+contexto_log: contextvars.ContextVar[str] = contextvars.ContextVar("contexto_log", default="")
+
+
+class _ContextoFilter(logging.Filter):
+    def filter(self, record):
+        record.contexto = contexto_log.get()
+        return True
 
 
 def _get_log_directory() -> str:
@@ -17,9 +27,9 @@ def _get_log_filename(log_dir: str) -> str:
 
 def _build_formatter(env: str) -> logging.Formatter:
     if env == "1":
-        log_format = "%(asctime)s - %(levelname)s - %(message)s"
+        log_format = "%(asctime)s - %(levelname)s - %(contexto)s%(message)s"
     else:
-        log_format = "%(asctime)s - %(levelname)s - %(name)s - %(filename)s:%(lineno)d - %(message)s"
+        log_format = "%(asctime)s - %(levelname)s - %(name)s - %(filename)s:%(lineno)d - %(contexto)s%(message)s"
     return logging.Formatter(log_format)
 
 
@@ -44,6 +54,9 @@ def configure_logging(project: str = "default"):
         log_file, maxBytes=5_000_000, backupCount=7, encoding="utf-8"
     )
     file_handler.setFormatter(formatter)
+
+    for handler in (stream_handler, file_handler):
+        handler.addFilter(_ContextoFilter())
 
     # Aplica todos os handlers
     logging.basicConfig(
