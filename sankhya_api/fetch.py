@@ -90,8 +90,11 @@ def sankhya_fetch_preco_venda(codprod: int, client) -> Optional[tuple[Optional[A
             continue
         except Exception as e:
             logging.error(f"❌ Erro inesperado na tentativa {attempt}/{max_retries} para CODPROD {codprod}: {e}")
-            enviar_notificacao_telegram(f"❌ Erro inesperado na tentativa {attempt}/{max_retries} para CODPROD {codprod}: {e}")
             continue
+
+        if response is None:
+            # client.post já fez retry com backoff e notificou; não adianta repetir
+            break
 
         if not isinstance(response, dict):
             logging.error(f"🔴 Esperava JSON de dict, mas recebi: {response!r}")
@@ -123,8 +126,8 @@ def sankhya_fetch_preco_venda(codprod: int, client) -> Optional[tuple[Optional[A
 
         return preco, preco_promo
 
-    logging.error(f"❌ Não consegui obter preço de venda para {codprod} após {max_retries} tentativas")
-    enviar_notificacao_telegram(f"❌ Não consegui obter preço de venda para {codprod} após {max_retries} tentativas")
+    logging.error(f"❌ Não consegui obter preço de venda para {codprod}")
+    enviar_notificacao_telegram(f"❌ Não consegui obter preço de venda para {codprod}")
     return None
 
 

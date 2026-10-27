@@ -138,9 +138,9 @@ class SankhyaClient:
 
         return None
 
-    def post(self, payload: dict) -> Optional[Any]:
+    def post(self, payload: dict, max_retries: int = 4) -> Optional[Any]:
         """
-        POST (sem retry automático, mas com refresh de token em 401).
+        POST com refresh de token em 401 e retry com backoff para 5xx/timeout/conexão.
         Retorna dict ou None em caso de JSON inválido ou erro HTTP.
         """
         service_name = payload.get("serviceName")
@@ -148,24 +148,43 @@ class SankhyaClient:
             raise ValueError("Payload precisa conter 'serviceName'.")
 
         url = self._build_url(service_name)
-        # garante token fresh
-        self._ensure_token_valid()
 
-        resp = requests.post(url, headers=self.headers, json=payload, timeout=self.timeout)
-        if resp.status_code == 401:
-            logging.warning("⚠️ 401 Unauthorized ao POST, renovando token e repetindo...")
-            self._authenticate()
-            resp = requests.post(url, headers=self.headers, json=payload, timeout=self.timeout)
+        for attempt in range(1, max_retries + 1):
+            # garante token fresh
+            self._ensure_token_valid()
 
-        try:
-            resp.raise_for_status()
-            return resp.json()
-        except JSONDecodeError:
-            logging.error(f"❌ JSON inválido no POST {service_name}: {resp.text!r}")
-            enviar_notificacao_telegram(f"❌ JSON inválido no POST {service_name}: {resp.text!r}")
-            return None
-        except RequestException as e:
-            logging.error(f"🚨 Erro HTTP no POST {service_name}: {e}")
-            logging.error(f"🚨 Response body: {resp.text!r}")
-            enviar_notificacao_telegram(f"🚨 Erro HTTP no POST {service_name}: {e}")
-            return None
+            try:
+                resp = requests.post(url, headers=self.headers, json=payload, timeout=self.timeout)
+                if resp.status_code == 401:
+                    logging.warning("⚠️ 401 Unauthorized ao POST, renovando token e repetindo...")
+                    self._authenticate()
+                    resp = requests.post(url, headers=self.headers, json=payload, timeout=self.timeout)
+            except (Timeout, requests.ConnectionError) as e:
+                logging.warning(f"⏱️ Falha de conexão {attempt}/{max_retries} no POST {service_name}: {e}")
+                erro = str(e)
+            else:
+                # 5xx do Sankhya costuma ser instabilidade momentânea: tenta de novo
+                if resp.status_code < 500:
+                    try:
+                        resp.raise_for_status()
+                        return resp.json()
+                    except JSONDecodeError:
+                        logging.error(f"❌ JSON inválido no POST {service_name}: {resp.text!r}")
+                        enviar_notificacao_telegram(f"❌ JSON inválido no POST {service_name}: {resp.text!r}")
+                        return None
+                    except RequestException as e:
+                        logging.error(f"🚨 Erro HTTP no POST {service_name}: {e}")
+                        logging.error(f"🚨 Response body: {resp.text!r}")
+                        enviar_notificacao_telegram(f"🚨 Erro HTTP no POST {service_name}: {e}")
+                        return None
+
+                erro = f"{resp.status_code} - {resp.text[:500]!r}"
+                logging.warning(f"⚠️ Erro {erro} no POST {service_name}, tentativa {attempt}/{max_retries}")
+
+            if attempt < max_retries:
+                # backoff exponencial: 2s, 4s, 8s...
+                time.sleep(2 ** attempt)
+
+        logging.error(f"🚨 POST {service_name} falhou após {max_retries} tentativas: {erro}")
+        enviar_notificacao_telegram(f"🚨 POST {service_name} falhou após {max_retries} tentativas: {erro}")
+        return None
