@@ -13,8 +13,8 @@ logging.basicConfig(
 )
 
 
-# Função para enviar notificação para o Telegram
-def enviar_notificacao_telegram(mensagem):
+# Função para enviar notificação para o Telegram; retorna True se a mensagem foi entregue
+def enviar_notificacao_telegram(mensagem) -> bool:
     token = os.getenv('BOTTOKEN')  # Seu Token do Bot
     chat_id = os.getenv('CHATID')  # O chat_id do destinatário
     url = f"https://api.telegram.org/bot{token}/sendMessage"
@@ -31,9 +31,10 @@ def enviar_notificacao_telegram(mensagem):
         response = requests.post(url, data=payload, timeout=15)
         if response.status_code == 200:
             logging.info("Notificação enviada com sucesso!")
-        else:
-            logging.warning(f"Falha ao enviar notificação: {response.status_code} - {response.text}")
+            return True
+        logging.warning(f"Falha ao enviar notificação: {response.status_code} - {response.text}")
     except requests.exceptions.RequestException as e:
         logging.error(f"Ocorreu um erro: {e}")
+    return False
 
 

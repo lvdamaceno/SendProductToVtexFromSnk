@@ -137,18 +137,24 @@ def vtex_fetch_estoque_sku(id_sku):
 
 
 def vtex_fetch_preco_venda_sku(id_sku) -> Optional[str]:
+    """
+    Retorna o preço base do SKU na VTEX como string.
+
+    "0" quando o SKU ainda não tem preço cadastrado (404), para que o preço seja criado;
+    None quando a consulta falhou, para que o SKU seja ignorado nesta execução.
+    """
     logging.info(f"🟢 Buscando preço de venda no Vtex para o id {id_sku}")
     endpoint = f"pricing/prices/{id_sku}"
 
-    try:
-        result = vtex_get(endpoint)
-        preco_venda = result.get('basePrice')
-        logging.debug(f"💵 Preço base Vtex do sku {id_sku}: {preco_venda}")
-        preco_str = str(preco_venda)
-        return preco_str
+    result = vtex_get(endpoint, ok_404=True)
+    if result is None:
+        logging.error(f"❌ Erro ao consultar preço de venda do SKU {id_sku}")
+        return None
 
-    except Exception as e:
-        logging.error(f"❌ Erro ao consultar preço de venda do SKU {id_sku}: {e}")
-        # enviar_notificacao_telegram(f"❌ Erro ao consultar preço de venda do SKU {id_sku}: {e}")
+    preco_venda = result.get('basePrice')
+    if preco_venda is None:
+        logging.info(f"💵 SKU {id_sku} sem preço cadastrado na VTEX")
         return str(0)
 
+    logging.debug(f"💵 Preço base Vtex do sku {id_sku}: {preco_venda}")
+    return str(preco_venda)

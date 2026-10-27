@@ -2,7 +2,6 @@ import logging
 import os
 from datetime import datetime
 from logging.handlers import RotatingFileHandler
-from utils.pg_log_handler import PostgresLogHandler  # ✅ Importa o handler customizado
 
 
 def _get_log_directory() -> str:
@@ -29,7 +28,6 @@ def configure_logging(project: str = "default"):
     Configura o sistema de logging com:
     - terminal
     - arquivo rotativo com data
-    - envio ao PostgreSQL com nome do projeto
     """
     env = os.getenv("APP_ENV", "0")
     log_dir = _get_log_directory()
@@ -47,18 +45,12 @@ def configure_logging(project: str = "default"):
     )
     file_handler.setFormatter(formatter)
 
-    # Handler de PostgreSQL
-    # pg_handler = PostgresLogHandler(project)
-    # pg_handler.setFormatter(formatter)
-
     # Aplica todos os handlers
     logging.basicConfig(
         level=log_level,
-        # handlers=[stream_handler, file_handler, pg_handler],
         handlers=[stream_handler, file_handler],
         force=True
     )
 
     logging.debug(f"📄 Logs salvos em: {log_file}")
-    logging.debug(f"📡 Logs também enviados para PostgreSQL com project='{project}'")
     logging.debug(f"🔧 Ambiente de execução: APP_ENV={env}")

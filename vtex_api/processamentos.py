@@ -5,8 +5,7 @@ from sankhya_api.fetch import sankhya_fetch_estoque, sankhya_fetch_preco_venda
 from vtex_api.create import vtex_create_fixed_price, delete_fixed_prices
 from vtex_api.fetch import vtex_fetch_total_id_sku_list, vtex_fetch_id_sku_list, vtex_fetch_id_info, \
     vtex_fetch_estoque_sku, vtex_fetch_preco_venda_sku
-from vtex_api.sender import (vtex_send_update_estoque, vtex_send_update_preco_venda,
-                             vtex_update_grupo_informacoes)
+from vtex_api.sender import vtex_send_update_estoque, vtex_send_update_preco_venda
 from decimal import Decimal
 
 def vtex_merge_id_sku_dicts():
@@ -50,6 +49,10 @@ SEM_SKU = "sem_sku"
 SEM_REFID = "sem_refid"
 FALHA = "falha"
 
+# Empresa e local do Sankhya cujo estoque é publicado no depósito "Estoque" da VTEX
+CODEMP_ESTOQUE = 7
+CODLOCAL_ESTOQUE = 188
+
 
 def _normaliza_sku(id_sku, sku):
     """Retorna o primeiro SKU da lista, ou None se o produto não tiver SKU."""
@@ -60,9 +63,11 @@ def _normaliza_sku(id_sku, sku):
     return edit_sku
 
 
-def vtex_atualiza_estoque(id_sku, sku, client, refid=None):
+def vtex_atualiza_estoque(id_sku, sku, client, refid=None, estoques_snk=None):
     """
     Sincroniza o estoque do SKU com o Sankhya.
+
+    estoques_snk: dict {codprod: estoque} pré-carregado em lote; se None, consulta o produto no Sankhya.
 
     Returns:
         tuple: (status, detalhe) — detalhe descreve a alteração ou a falha, ou None.
@@ -86,7 +91,10 @@ def vtex_atualiza_estoque(id_sku, sku, client, refid=None):
             return FALHA, f"estoque VTEX indisponível para Codprod {refid} (SKU {edit_sku})"
 
         estoque_vtex = estoque['Estoque']
-        estoque_snk = sankhya_fetch_estoque(refid, 7, 188, client)
+        if estoques_snk is not None:
+            estoque_snk = estoques_snk.get(int(refid), 0)
+        else:
+            estoque_snk = sankhya_fetch_estoque(refid, CODEMP_ESTOQUE, CODLOCAL_ESTOQUE, client)
         if estoque_snk is None:
             return FALHA, f"estoque Sankhya indisponível para Codprod {refid}"
 
@@ -146,6 +154,8 @@ def vtex_atualiza_preco_venda(id_sku, sku, client, refid=None):
 
         # 3) Busca no VTEX o preço do SKU
         preco_vtex = vtex_fetch_preco_venda_sku(edit_sku)
+        if preco_vtex is None:
+            return FALHA, f"preço VTEX indisponível para Codprod {refid} (SKU {edit_sku})"
 
         logging.info(f"💵 Preço de venda codprod {refid} Sku {edit_sku} Sankhya: {preco} | Vtex: {preco_vtex}")
 

@@ -35,7 +35,7 @@ def build_vtex_request(endpoint: str) -> tuple[str, dict]:
     return url, headers
 
 
-def vtex_request(method: str, endpoint: str, data=None, log_msg=None):
+def vtex_request(method: str, endpoint: str, data=None, log_msg=None, ok_404=False):
     url, headers = build_vtex_request(endpoint)
     try:
         if log_msg:
@@ -54,6 +54,10 @@ def vtex_request(method: str, endpoint: str, data=None, log_msg=None):
         logging.info(f"📥 Status Code: {response.status_code}")
         logging.debug(f"📥 Response Text: {response.text}")
 
+        # Para consultas em que "não existe" é uma resposta válida (ex.: SKU ainda sem preço)
+        if ok_404 and response.status_code == 404:
+            return {}
+
         response.raise_for_status()
         return response.json() if response.content else {}
 
@@ -64,8 +68,8 @@ def vtex_request(method: str, endpoint: str, data=None, log_msg=None):
         return None
 
 
-def vtex_get(endpoint, log_msg=None):
-    return vtex_request("GET", endpoint, log_msg=log_msg)
+def vtex_get(endpoint, log_msg=None, ok_404=False):
+    return vtex_request("GET", endpoint, log_msg=log_msg, ok_404=ok_404)
 
 def vtex_post(endpoint, data, log_msg=None):
     return vtex_request("POST", endpoint, data=data, log_msg=log_msg)

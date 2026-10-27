@@ -1,5 +1,6 @@
 import logging
 import os
+import threading
 import time
 from typing import Optional, Any
 
@@ -32,6 +33,8 @@ class SankhyaClient:
         self.token_expiry: float    = 0.0
         self.headers: dict          = {}
         self.timeout: int           = 120
+        # o cliente é compartilhado entre threads: serializa login/refresh do token
+        self._lock = threading.Lock()
 
         # autentica pela primeira vez
         self._authenticate()
@@ -71,8 +74,13 @@ class SankhyaClient:
 
     def _ensure_token_valid(self):
         """Reloga se não tiver token ou se já tiver expirado."""
-        if not self.token or time.time() >= self.token_expiry:
-            logging.info("🔄 Token expirado ou ausente, realizando novo login...")
+        with self._lock:
+            if not self.token or time.time() >= self.token_expiry:
+                logging.info("🔄 Token expirado ou ausente, realizando novo login...")
+                self._authenticate()
+
+    def _reauthenticate(self):
+        with self._lock:
             self._authenticate()
 
     def _build_url(self, service_name: str) -> str:
@@ -109,7 +117,7 @@ class SankhyaClient:
                 # se 401, renova token e repete
                 if resp.status_code == 401:
                     logging.warning("⚠️ 401 Unauthorized, renovando token e repetindo...")
-                    self._authenticate()
+                    self._reauthenticate()
                     continue
 
                 resp.raise_for_status()
@@ -157,7 +165,7 @@ class SankhyaClient:
                 resp = requests.post(url, headers=self.headers, json=payload, timeout=self.timeout)
                 if resp.status_code == 401:
                     logging.warning("⚠️ 401 Unauthorized ao POST, renovando token e repetindo...")
-                    self._authenticate()
+                    self._reauthenticate()
                     resp = requests.post(url, headers=self.headers, json=payload, timeout=self.timeout)
             except (Timeout, requests.ConnectionError) as e:
                 logging.warning(f"⏱️ Falha de conexão {attempt}/{max_retries} no POST {service_name}: {e}")

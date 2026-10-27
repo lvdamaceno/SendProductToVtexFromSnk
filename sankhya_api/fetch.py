@@ -6,6 +6,7 @@ from typing import Optional, Any
 import requests
 
 from notifications.telegram import enviar_notificacao_telegram
+from sankhya_api.utils import execute_query
 
 
 def sankhya_fetch_estoque(codprod: int, codemp: int, local: int, client, tentativas: int = 3) -> Optional[int]:
@@ -61,6 +62,29 @@ def sankhya_fetch_estoque(codprod: int, codemp: int, local: int, client, tentati
 
     logging.error(f"❌ Todas as tentativas falharam ao consultar estoque do produto {codprod}")
     return None
+
+
+def sankhya_fetch_estoques(codemp: int, local: int, client) -> Optional[dict[int, int]]:
+    """
+    Consulta numa única query o estoque de todos os produtos da empresa/local.
+
+    Produtos sem registro em TGFEST não aparecem no dict (estoque 0).
+
+    Returns:
+        dict {codprod: estoque} ou None em caso de falha.
+    """
+    sql = f"SELECT CODPROD, ESTOQUE FROM TGFEST WHERE CODEMP = {int(codemp)} AND CODLOCAL = {int(local)}"
+    rows = execute_query(sql, client)
+    if not isinstance(rows, list):
+        logging.error(f"❌ Falha ao consultar estoques em lote no Sankhya: {rows}")
+        return None
+
+    estoques: dict[int, int] = {}
+    for codprod, estoque in rows:
+        estoques[int(codprod)] = estoques.get(int(codprod), 0) + int(float(estoque))
+
+    logging.info(f"📦 Estoques Sankhya carregados em lote: {len(estoques)} produtos")
+    return estoques
 
 
 def sankhya_fetch_preco_venda(codprod: int, client) -> Optional[tuple[Optional[Any], Optional[Any]]]:
