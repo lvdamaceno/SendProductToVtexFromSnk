@@ -1,7 +1,6 @@
 import logging
 import time
 
-from notifications.telegram import enviar_notificacao_telegram
 from sankhya_api.fetch import sankhya_fetch_estoque, sankhya_fetch_preco_venda
 from vtex_api.create import vtex_create_fixed_price, delete_fixed_prices
 from vtex_api.fetch import vtex_fetch_total_id_sku_list, vtex_fetch_id_sku_list, vtex_fetch_id_info, \
@@ -44,6 +43,14 @@ def vtex_merge_id_sku_dicts():
     return id_sku_dict
 
 
+# Status retornados pelas rotinas de atualização (contabilizados no resumo do main)
+OK = "ok"
+ATUALIZADO = "atualizado"
+SEM_SKU = "sem_sku"
+SEM_REFID = "sem_refid"
+FALHA = "falha"
+
+
 def _normaliza_sku(id_sku, sku):
     """Retorna o primeiro SKU da lista, ou None se o produto não tiver SKU."""
     edit_sku = sku[0] if isinstance(sku, list) and sku else sku
@@ -53,42 +60,65 @@ def _normaliza_sku(id_sku, sku):
     return edit_sku
 
 
-def vtex_atualiza_estoque(id_sku, sku, client):
+def vtex_atualiza_estoque(id_sku, sku, client, refid=None):
+    """
+    Sincroniza o estoque do SKU com o Sankhya.
+
+    Returns:
+        tuple: (status, detalhe) — detalhe descreve a alteração ou a falha, ou None.
+    """
     edit_sku = _normaliza_sku(id_sku, sku)
     if edit_sku is None:
-        return
+        return SEM_SKU, None
 
     inicio = time.time()
     try:
         logging.info(f"🟢 Buscando dados de estoque do id {id_sku} - sku {edit_sku}")
 
-        refid = vtex_fetch_id_info(id_sku)
+        if refid is None:
+            refid = vtex_fetch_id_info(id_sku)
+        if not refid:
+            logging.warning(f"⚠️ Sem RefId para id {id_sku}, ignorando estoque")
+            return SEM_REFID, None
 
         estoque = vtex_fetch_estoque_sku(edit_sku)
-        for deposito, qtd in estoque.items():
-            if deposito == 'Estoque':
-                estoque_snk = sankhya_fetch_estoque(refid, 7, 188, client)
-                estoque_vtex = qtd
-                if estoque_snk != estoque_vtex:
-                    logging.info(f'🚨 Estoque do produto {refid} sku {edit_sku} precisa ser atualizado')
-                    enviar_notificacao_telegram(f'🚨 Estoque do produto {refid} sku {edit_sku} precisa ser atualizado')
-                    logging.info(f'🚨 Estoque Snk: {estoque_snk} | Estoque Vtex: {estoque_vtex}')
-                    enviar_notificacao_telegram(f'🚨 Estoque Snk: {estoque_snk} | Estoque Vtex: {estoque_vtex}')
-                    vtex_send_update_estoque(refid, edit_sku, estoque_snk, estoque_vtex)
+        if 'Estoque' not in estoque:
+            return FALHA, f"estoque VTEX indisponível para Codprod {refid} (SKU {edit_sku})"
+
+        estoque_vtex = estoque['Estoque']
+        estoque_snk = sankhya_fetch_estoque(refid, 7, 188, client)
+        if estoque_snk is None:
+            return FALHA, f"estoque Sankhya indisponível para Codprod {refid}"
+
+        if estoque_snk == estoque_vtex:
+            return OK, None
+
+        logging.info(f'🚨 Estoque do produto {refid} sku {edit_sku} precisa ser atualizado')
+        logging.info(f'🚨 Estoque Snk: {estoque_snk} | Estoque Vtex: {estoque_vtex}')
+        if vtex_send_update_estoque(refid, edit_sku, estoque_snk, estoque_vtex):
+            return ATUALIZADO, f"Codprod {refid}: estoque {estoque_vtex} → {estoque_snk}"
+        return FALHA, f"falha ao enviar estoque do Codprod {refid} (SKU {edit_sku})"
 
     except Exception as e:
         logging.error(f"❌ Falha ao processar estoque para id {id_sku}, sku {sku}: {e}")
-        enviar_notificacao_telegram(f"❌ Falha ao processar estoque para id {id_sku}, sku {sku}: {e}")
+        return FALHA, f"erro no estoque do id {id_sku}: {e}"
 
-    fim = time.time()
-    duracao_min = (fim - inicio) / 60
-    logging.info(f"⏱️ Tempo total de execução: {duracao_min:.2f} minutos")
+    finally:
+        fim = time.time()
+        duracao_min = (fim - inicio) / 60
+        logging.info(f"⏱️ Tempo total de execução: {duracao_min:.2f} minutos")
 
 
-def vtex_atualiza_preco_venda(id_sku, sku, client):
+def vtex_atualiza_preco_venda(id_sku, sku, client, refid=None):
+    """
+    Sincroniza o preço base (e o preço fixo promocional) do SKU com o Sankhya.
+
+    Returns:
+        tuple: (status, detalhe) — detalhe descreve a alteração ou a falha, ou None.
+    """
     edit_sku = _normaliza_sku(id_sku, sku)
     if edit_sku is None:
-        return
+        return SEM_SKU, None
 
     inicio = time.time()
     try:
@@ -97,22 +127,22 @@ def vtex_atualiza_preco_venda(id_sku, sku, client):
         # delete_fixed_prices(edit_sku)
 
         # 1) Busca no VTEX para obter o refid
-        refid = vtex_fetch_id_info(id_sku)
+        if refid is None:
+            refid = vtex_fetch_id_info(id_sku)
         if not refid:
             logging.warning(f"⚠️ Sem RefId para id {id_sku}, ignorando preço")
-            return
+            return SEM_REFID, None
 
         # 2) Chama o Sankhya
         resultado_snk = sankhya_fetch_preco_venda(refid, client)
         if resultado_snk is None:
             logging.error(f"⚠️ Não foi possível obter preço do Sankhya para produto {refid}, ignorando")
-            return
+            return FALHA, f"preço Sankhya indisponível para Codprod {refid}"
 
         preco, preco_promo = resultado_snk
         if preco is None:
             logging.error(f"⚠️ Preço Sankhya ausente para produto {refid}")
-            enviar_notificacao_telegram(f"⚠️ Preço Sankhya ausente para produto {refid}")
-            return
+            return FALHA, f"preço Sankhya ausente para Codprod {refid}"
 
         # 3) Busca no VTEX o preço do SKU
         preco_vtex = vtex_fetch_preco_venda_sku(edit_sku)
@@ -128,13 +158,15 @@ def vtex_atualiza_preco_venda(id_sku, sku, client):
         dec_preco_sankhya = Decimal(norm_preco_snk)
         dec_preco_vtex = Decimal(norm_preco_vtex)
 
+        status, detalhe = OK, None
         if dec_preco_sankhya != dec_preco_vtex:
             logging.info(f'🚨 Preço do produto {refid} sku {edit_sku} precisa ser atualizado')
-            enviar_notificacao_telegram(f'🚨 Preço do produto {refid} sku {edit_sku} precisa ser atualizado')
             logging.info(f'🚨 Preço Snk: {dec_preco_sankhya} | Preço Vtex: {dec_preco_vtex}')
-            enviar_notificacao_telegram(f'🚨 Preço Snk: {dec_preco_sankhya} | Preço Vtex: {dec_preco_vtex}')
             logging.debug(f"⚠️ Enviando para atualização de preços: {refid}, {edit_sku}, {preco}, {preco_vtex}")
-            vtex_send_update_preco_venda(refid, edit_sku, preco, preco_vtex)
+            if vtex_send_update_preco_venda(refid, edit_sku, preco, preco_vtex):
+                status, detalhe = ATUALIZADO, f"Codprod {refid}: preço {dec_preco_vtex} → {dec_preco_sankhya}"
+            else:
+                status, detalhe = FALHA, f"falha ao enviar preço do Codprod {refid} (SKU {edit_sku})"
         else:
             logging.info(f"✅ Preços iguais: {dec_preco_sankhya}")
 
@@ -145,10 +177,11 @@ def vtex_atualiza_preco_venda(id_sku, sku, client):
         else:
             logging.info('💵 Produto não possui desconto')
 
+        return status, detalhe
 
     except Exception as e:
         logging.error(f"❌ Falha ao processar id {id_sku}, sku {sku}: {e}")
-        enviar_notificacao_telegram(f"❌ Falha ao processar id {id_sku}, sku {sku}: {e}")
+        return FALHA, f"erro no preço do id {id_sku}: {e}"
 
     finally:
         fim = time.time()

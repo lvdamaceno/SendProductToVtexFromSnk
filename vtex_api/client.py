@@ -41,10 +41,8 @@ def vtex_request(method: str, endpoint: str, data=None, log_msg=None):
         if log_msg:
             logging.info(log_msg)
 
-        logging.info(f"🔗 URL: {url}")
-        logging.info(f"📨 Método: {method.upper()}")
-        logging.info(f"📦 Payload: {json.dumps(data, indent=2)}")
-        logging.debug(f"🧾 Headers: {headers}")
+        logging.info(f"🔗 {method.upper()} {url}")
+        logging.debug(f"📦 Payload: {json.dumps(data, indent=2)}")
 
         response = requests.request(
             method=method.upper(),
@@ -54,7 +52,7 @@ def vtex_request(method: str, endpoint: str, data=None, log_msg=None):
             timeout=30
         )
         logging.info(f"📥 Status Code: {response.status_code}")
-        logging.info(f"📥 Response Text: {response.text}")
+        logging.debug(f"📥 Response Text: {response.text}")
 
         response.raise_for_status()
         return response.json() if response.content else {}

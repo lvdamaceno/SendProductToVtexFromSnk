@@ -85,7 +85,6 @@ def vtex_fetch_id_info(id_sku):
         result = vtex_get(endpoint)
         if not result:
             logging.warning(f"⚠️ Nenhum resultado encontrado para SKU {id_sku}")
-            enviar_notificacao_telegram(f"⚠️ Nenhum resultado encontrado para SKU {id_sku}")
             return None
 
         ref_id = result.get("RefId")
@@ -97,13 +96,11 @@ def vtex_fetch_id_info(id_sku):
             logging.info(f"📄 Produto: {ref_id}")
         else:
             logging.warning(f"⚠️ Produto sem RefId para SKU {id_sku}")
-            enviar_notificacao_telegram(f"⚠️ Produto sem RefId para SKU {id_sku}")
 
         return ref_id
 
     except Exception as e:
         logging.error(f"❌ Erro ao buscar informações do produto SKU {id_sku}: {e}")
-        enviar_notificacao_telegram(f"❌ Erro ao buscar informações do produto SKU {id_sku}: {e}")
         return None
 
 
@@ -118,7 +115,6 @@ def vtex_fetch_estoque_sku(id_sku):
         result = vtex_get(endpoint)
         if not result:
             logging.warning(f"⚠️ Nenhum resultado para o SKU {id_sku}")
-            enviar_notificacao_telegram(f"⚠️ Nenhum resultado para o SKU {id_sku}")
             return estoque
 
         balance = result.get('balance', [])
@@ -133,11 +129,9 @@ def vtex_fetch_estoque_sku(id_sku):
             logging.info(f"📦 Estoque VTEX: SKU {id_sku}: {log_str}")
         else:
             logging.warning(f"⚠️ SKU {id_sku} com dados de estoque vazios.")
-            enviar_notificacao_telegram(f"⚠️ SKU {id_sku} com dados de estoque vazios.")
 
     except Exception as e:
         logging.error(f"❌ Erro ao consultar estoque do SKU {id_sku}: {e}")
-        enviar_notificacao_telegram(f"❌ Erro ao consultar estoque do SKU {id_sku}: {e}")
 
     return estoque
 

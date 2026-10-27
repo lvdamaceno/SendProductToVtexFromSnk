@@ -60,7 +60,6 @@ def sankhya_fetch_estoque(codprod: int, codemp: int, local: int, client, tentati
             logging.warning(f"⚠️ Tentativa {tentativa}/{tentativas} falhou ao consultar estoque do produto {codprod}: {e}")
 
     logging.error(f"❌ Todas as tentativas falharam ao consultar estoque do produto {codprod}")
-    enviar_notificacao_telegram(f"❌ Todas as tentativas falharam ao consultar estoque do produto {codprod}")
     return None
 
 
@@ -98,25 +97,21 @@ def sankhya_fetch_preco_venda(codprod: int, client) -> Optional[tuple[Optional[A
 
         if not isinstance(response, dict):
             logging.error(f"🔴 Esperava JSON de dict, mas recebi: {response!r}")
-            enviar_notificacao_telegram(f"🔴 Esperava JSON de dict, mas recebi: {response!r}")
             continue
 
         resp_body = response.get("responseBody")
         if not isinstance(resp_body, dict):
             logging.error(f"🔴 Sem 'responseBody' válido: {resp_body!r}")
-            enviar_notificacao_telegram(f"🔴 Sem 'responseBody' válido: {resp_body!r}")
             continue
 
         produtos = resp_body.get("produtos")
         if not isinstance(produtos, dict):
             logging.error(f"🔴 Sem 'produtos' válido: {produtos!r}")
-            enviar_notificacao_telegram(f"🔴 Sem 'produtos' válido: {produtos!r}")
             continue
 
         produto = produtos.get("produto")
         if not isinstance(produto, dict):
             logging.error(f"🔴 Sem 'produto' válido: {produto!r}")
-            enviar_notificacao_telegram(f"🔴 Sem 'produto' válido: {produto!r}")
             continue
 
         preco = produto.get("PRECOBASE", {}).get("$")
@@ -127,7 +122,6 @@ def sankhya_fetch_preco_venda(codprod: int, client) -> Optional[tuple[Optional[A
         return preco, preco_promo
 
     logging.error(f"❌ Não consegui obter preço de venda para {codprod}")
-    enviar_notificacao_telegram(f"❌ Não consegui obter preço de venda para {codprod}")
     return None
 
 

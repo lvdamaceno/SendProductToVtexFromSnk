@@ -170,12 +170,10 @@ class SankhyaClient:
                         return resp.json()
                     except JSONDecodeError:
                         logging.error(f"❌ JSON inválido no POST {service_name}: {resp.text!r}")
-                        enviar_notificacao_telegram(f"❌ JSON inválido no POST {service_name}: {resp.text!r}")
                         return None
                     except RequestException as e:
                         logging.error(f"🚨 Erro HTTP no POST {service_name}: {e}")
                         logging.error(f"🚨 Response body: {resp.text!r}")
-                        enviar_notificacao_telegram(f"🚨 Erro HTTP no POST {service_name}: {e}")
                         return None
 
                 erro = f"{resp.status_code} - {resp.text[:500]!r}"
@@ -186,5 +184,4 @@ class SankhyaClient:
                 time.sleep(2 ** attempt)
 
         logging.error(f"🚨 POST {service_name} falhou após {max_retries} tentativas: {erro}")
-        enviar_notificacao_telegram(f"🚨 POST {service_name} falhou após {max_retries} tentativas: {erro}")
         return None
