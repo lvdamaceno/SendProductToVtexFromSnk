@@ -44,10 +44,22 @@ def vtex_merge_id_sku_dicts():
     return id_sku_dict
 
 
+def _normaliza_sku(id_sku, sku):
+    """Retorna o primeiro SKU da lista, ou None se o produto não tiver SKU."""
+    edit_sku = sku[0] if isinstance(sku, list) and sku else sku
+    if edit_sku is None or edit_sku == []:
+        logging.warning(f"⚠️ Produto id {id_sku} sem SKU na VTEX, ignorando")
+        return None
+    return edit_sku
+
+
 def vtex_atualiza_estoque(id_sku, sku, client):
+    edit_sku = _normaliza_sku(id_sku, sku)
+    if edit_sku is None:
+        return
+
     inicio = time.time()
     try:
-        edit_sku = sku[0] if isinstance(sku, list) and sku else sku
         logging.info(f"🟢 Buscando dados de estoque do id {id_sku} - sku {edit_sku}")
 
         refid = vtex_fetch_id_info(id_sku)
@@ -74,22 +86,33 @@ def vtex_atualiza_estoque(id_sku, sku, client):
 
 
 def vtex_atualiza_preco_venda(id_sku, sku, client):
+    edit_sku = _normaliza_sku(id_sku, sku)
+    if edit_sku is None:
+        return
 
     inicio = time.time()
     try:
-        edit_sku = sku[0] if isinstance(sku, list) and sku else sku
         logging.info(f"🟢 Buscando dados de preço de venda do id {id_sku} - sku {edit_sku}")
 
         # delete_fixed_prices(edit_sku)
 
         # 1) Busca no VTEX para obter o refid
         refid = vtex_fetch_id_info(id_sku)
+        if not refid:
+            logging.warning(f"⚠️ Sem RefId para id {id_sku}, ignorando preço")
+            return
 
         # 2) Chama o Sankhya
-        preco, preco_promo = sankhya_fetch_preco_venda(refid, client)
+        resultado_snk = sankhya_fetch_preco_venda(refid, client)
+        if resultado_snk is None:
+            logging.error(f"⚠️ Não foi possível obter preço do Sankhya para produto {refid}, ignorando")
+            return
+
+        preco, preco_promo = resultado_snk
         if preco is None:
             logging.error(f"⚠️ Preço Sankhya ausente para produto {refid}")
             enviar_notificacao_telegram(f"⚠️ Preço Sankhya ausente para produto {refid}")
+            return
 
         # 3) Busca no VTEX o preço do SKU
         preco_vtex = vtex_fetch_preco_venda_sku(edit_sku)
@@ -116,7 +139,7 @@ def vtex_atualiza_preco_venda(id_sku, sku, client):
             logging.info(f"✅ Preços iguais: {dec_preco_sankhya}")
 
         logging.info(f"Preço promo {preco_promo}")
-        if float(preco_promo) > 0:
+        if preco_promo and float(preco_promo) > 0:
             logging.info('💵 Produto possui desconto, criando preço fixo no vtex')
             vtex_create_fixed_price(edit_sku, preco, preco_promo)
         else:
@@ -127,6 +150,7 @@ def vtex_atualiza_preco_venda(id_sku, sku, client):
         logging.error(f"❌ Falha ao processar id {id_sku}, sku {sku}: {e}")
         enviar_notificacao_telegram(f"❌ Falha ao processar id {id_sku}, sku {sku}: {e}")
 
-    fim = time.time()
-    duracao_min = (fim - inicio) / 60
-    logging.info(f"⏱️ Tempo total de execução: {duracao_min:.2f} minutos")
+    finally:
+        fim = time.time()
+        duracao_min = (fim - inicio) / 60
+        logging.info(f"⏱️ Tempo total de execução: {duracao_min:.2f} minutos")

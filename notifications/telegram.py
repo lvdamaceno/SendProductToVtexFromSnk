@@ -20,19 +20,19 @@ def enviar_notificacao_telegram(mensagem):
     url = f"https://api.telegram.org/bot{token}/sendMessage"
 
     # Dados a serem enviados
+    # Texto puro: com parse_mode Markdown, mensagens com "_" ou "[]" geravam 400
     payload = {
         'chat_id': chat_id,
-        'text': mensagem,
-        'parse_mode': 'Markdown'
+        'text': mensagem
     }
 
     # Enviar a requisição para o Telegram
     try:
-        response = requests.post(url, data=payload)
+        response = requests.post(url, data=payload, timeout=15)
         if response.status_code == 200:
             logging.info("Notificação enviada com sucesso!")
         else:
-            logging.warning(f"Falha ao enviar notificação: {response.status_code}")
+            logging.warning(f"Falha ao enviar notificação: {response.status_code} - {response.text}")
     except requests.exceptions.RequestException as e:
         logging.error(f"Ocorreu um erro: {e}")
 

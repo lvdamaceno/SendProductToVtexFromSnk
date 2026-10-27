@@ -165,6 +165,7 @@ class SankhyaClient:
             enviar_notificacao_telegram(f"❌ JSON inválido no POST {service_name}: {resp.text!r}")
             return None
         except RequestException as e:
-            logging.error(f"🚨 Erro HTTP no POST {service_name}: {e}", exc_info=True)
-            enviar_notificacao_telegram(f"🚨 Erro HTTP no POST {service_name}: {e}", exc_info=True)
+            logging.error(f"🚨 Erro HTTP no POST {service_name}: {e}")
+            logging.error(f"🚨 Response body: {resp.text!r}")
+            enviar_notificacao_telegram(f"🚨 Erro HTTP no POST {service_name}: {e}")
             return None

@@ -107,7 +107,7 @@ def sankhya_fetch_preco_venda(codprod: int, client) -> Optional[tuple[Optional[A
         produtos = resp_body.get("produtos")
         if not isinstance(produtos, dict):
             logging.error(f"🔴 Sem 'produtos' válido: {produtos!r}")
-            enviar_notificacao_telegram(logging.error(f"🔴 Sem 'produtos' válido: {produtos!r}"))
+            enviar_notificacao_telegram(f"🔴 Sem 'produtos' válido: {produtos!r}")
             continue
 
         produto = produtos.get("produto")
